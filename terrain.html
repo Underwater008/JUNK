@@ -6,6 +6,7 @@
     <title>3D Terrain Grid Visualization</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
         body {
             margin: 0;
@@ -67,6 +68,74 @@
             font-size: 16px;
             font-weight: 600;
             color: #1a1a1a;
+        }
+        .picker-group {
+            margin-bottom: 16px;
+        }
+        .picker-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #4a4a4a;
+            font-size: 13px;
+        }
+        .picker-group input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .picker-group input[type="text"]:focus {
+            outline: none;
+            border-color: #6b4ce6;
+        }
+        .cube-label {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1a1a1a;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transform: translate(-50%, -100%);
+            margin-top: -8px;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cube-label .material-symbols-outlined {
+            font-size: 16px;
+            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 20;
+        }
+        .picker-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .picker-group select:focus {
+            outline: none;
+            border-color: #6b4ce6;
+        }
+        .picker-group select option {
+            padding: 8px;
         }
         .color-swatches {
             display: grid;
@@ -157,6 +226,35 @@
 
     <div id="color-picker">
         <h3>Customize Cube</h3>
+        <div class="picker-group">
+            <label>Icon Preset</label>
+            <select id="cube-icon">
+                <option value="">None</option>
+                <option value="electric_bolt">⚡ Power Station</option>
+                <option value="local_hospital">🏥 Hospital</option>
+                <option value="school">🏫 School</option>
+                <option value="account_balance">🏛️ Government</option>
+                <option value="radio">📻 Radio Station</option>
+                <option value="anchor">⚓ Port</option>
+                <option value="factory">🏭 Factory</option>
+                <option value="agriculture">🌾 Farm</option>
+                <option value="water_drop">💧 Water</option>
+                <option value="home">🏠 Residential</option>
+                <option value="store">🏪 Market</option>
+                <option value="local_fire_department">🚒 Fire Station</option>
+                <option value="local_police">🚓 Police</option>
+                <option value="flight">✈️ Airport</option>
+                <option value="warehouse">📦 Warehouse</option>
+            </select>
+        </div>
+        <div class="picker-group">
+            <label>Custom Icon <a href="https://fonts.google.com/icons" target="_blank" style="font-size: 11px; color: #6b4ce6; text-decoration: none;">(browse)</a></label>
+            <input type="text" id="cube-icon-custom" placeholder="e.g., restaurant, build, star...">
+        </div>
+        <div class="picker-group">
+            <label>Label</label>
+            <input type="text" id="cube-label" placeholder="Enter name..." maxlength="20">
+        </div>
         <div class="color-swatches">
             <div class="color-swatch original" data-color="original" title="Original"></div>
             <div class="color-swatch" data-color="#5CCBD4" style="background: #5CCBD4;" title="Cyan"></div>
@@ -226,8 +324,9 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-        let scene, camera, renderer, controls;
+        let scene, camera, renderer, controls, labelRenderer;
         let instancedMesh;
         let cubeData = [];
         let animationStartTime = 0;
@@ -286,6 +385,14 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
+
+            // Label renderer
+            labelRenderer = new CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = '0px';
+            labelRenderer.domElement.style.pointerEvents = 'none';
+            document.body.appendChild(labelRenderer.domElement);
 
             // Post-processing setup (no bloom)
             composer = new EffectComposer(renderer);
@@ -742,7 +849,10 @@
                     wasHovered: false,
                     hoverProgress: 0,
                     hoverElevation: 0,
-                    hoverElevationBonus: 0
+                    hoverElevationBonus: 0,
+                    label: '',
+                    icon: '',
+                    labelObject: null
                 });
             });
 
@@ -999,13 +1109,17 @@
         }
 
         function saveCustomColors() {
-            const customColors = {};
+            const customData = {};
             cubeData.forEach(cube => {
-                if (cube.customColor) {
-                    customColors[cube.index] = '#' + cube.customColor.getHexString();
+                if (cube.customColor || cube.label || cube.icon) {
+                    customData[cube.index] = {
+                        color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
+                        label: cube.label || '',
+                        icon: cube.icon || ''
+                    };
                 }
             });
-            localStorage.setItem('terrainCustomColors', JSON.stringify(customColors));
+            localStorage.setItem('terrainCustomColors', JSON.stringify(customData));
         }
 
         function loadCustomColors() {
@@ -1013,11 +1127,26 @@
             if (!saved) return;
 
             try {
-                const customColors = JSON.parse(saved);
-                Object.keys(customColors).forEach(index => {
+                const customData = JSON.parse(saved);
+                Object.keys(customData).forEach(index => {
                     const idx = parseInt(index);
                     if (idx >= 0 && idx < cubeData.length) {
-                        cubeData[idx].customColor = new THREE.Color(customColors[index]);
+                        const data = customData[index];
+
+                        // Load color
+                        if (data.color) {
+                            cubeData[idx].customColor = new THREE.Color(data.color);
+                        } else if (typeof data === 'string') {
+                            // Backward compatibility with old format
+                            cubeData[idx].customColor = new THREE.Color(data);
+                        }
+
+                        // Load label and icon
+                        if (data.label || data.icon) {
+                            cubeData[idx].label = data.label || '';
+                            cubeData[idx].icon = data.icon || '';
+                            updateCubeLabel(cubeData[idx], data.label, data.icon);
+                        }
                     }
                 });
             } catch (e) {
@@ -1025,9 +1154,109 @@
             }
         }
 
+        function updateCubeLabel(cube, labelText, iconName) {
+            // Remove existing label
+            if (cube.labelObject) {
+                scene.remove(cube.labelObject);
+                cube.labelObject = null;
+            }
+
+            // Update cube data
+            cube.label = labelText ? labelText.trim() : '';
+            cube.icon = iconName || '';
+
+            // Create new label if text or icon is provided
+            if (cube.label || cube.icon) {
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'cube-label';
+
+                // Add icon if provided
+                if (cube.icon) {
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = 'material-symbols-outlined';
+                    iconSpan.textContent = cube.icon;
+                    labelDiv.appendChild(iconSpan);
+                }
+
+                // Add text if provided
+                if (cube.label) {
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = cube.label;
+                    labelDiv.appendChild(textSpan);
+                }
+
+                const label = new CSS2DObject(labelDiv);
+                const totalHeight = cube.currentHeight + cube.hoverElevation;
+                label.position.set(cube.x, totalHeight + 2, cube.z);
+                scene.add(label);
+
+                cube.labelObject = label;
+            }
+
+            saveCustomColors();
+        }
+
         function setupColorSwatches() {
             const swatches = document.querySelectorAll('.color-swatch');
             const cube = cubeData[selectedCubeIndex];
+
+            // Setup icon preset dropdown
+            const iconSelect = document.getElementById('cube-icon');
+            const newIconSelect = iconSelect.cloneNode(true);
+            iconSelect.parentNode.replaceChild(newIconSelect, iconSelect);
+
+            // Check if current icon is in preset options
+            const isPresetIcon = Array.from(newIconSelect.options).some(opt => opt.value === cube.icon);
+
+            if (isPresetIcon) {
+                newIconSelect.value = cube.icon;
+            } else {
+                newIconSelect.value = '';
+            }
+
+            newIconSelect.addEventListener('change', (e) => {
+                const customInput = document.getElementById('cube-icon-custom');
+                customInput.value = ''; // Clear custom input when preset is selected
+                updateCubeLabel(cube, cube.label, e.target.value);
+            });
+
+            newIconSelect.addEventListener('mousedown', (e) => e.stopPropagation());
+            newIconSelect.addEventListener('click', (e) => e.stopPropagation());
+
+            // Setup custom icon input
+            const customIconInput = document.getElementById('cube-icon-custom');
+            const newCustomIconInput = customIconInput.cloneNode(true);
+            customIconInput.parentNode.replaceChild(newCustomIconInput, customIconInput);
+
+            // Show custom icon if it's not a preset
+            if (cube.icon && !isPresetIcon) {
+                newCustomIconInput.value = cube.icon;
+            } else {
+                newCustomIconInput.value = '';
+            }
+
+            newCustomIconInput.addEventListener('input', (e) => {
+                const select = document.getElementById('cube-icon');
+                select.value = ''; // Clear preset when custom is typed
+                updateCubeLabel(cube, cube.label, e.target.value.trim());
+            });
+
+            newCustomIconInput.addEventListener('mousedown', (e) => e.stopPropagation());
+            newCustomIconInput.addEventListener('click', (e) => e.stopPropagation());
+
+            // Setup label input
+            const labelInput = document.getElementById('cube-label');
+            labelInput.value = cube.label || '';
+
+            const newLabelInput = labelInput.cloneNode(true);
+            labelInput.parentNode.replaceChild(newLabelInput, labelInput);
+
+            newLabelInput.addEventListener('input', (e) => {
+                updateCubeLabel(cube, e.target.value, cube.icon);
+            });
+
+            newLabelInput.addEventListener('mousedown', (e) => e.stopPropagation());
+            newLabelInput.addEventListener('click', (e) => e.stopPropagation());
 
             // Remove previous listeners
             swatches.forEach(swatch => {
@@ -1201,6 +1430,7 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function updateCameraAnimation(delta) {
@@ -1337,6 +1567,11 @@
                     matrix.compose(position, quaternion, scale);
                     instancedMesh.setMatrixAt(cube.index, matrix);
 
+                    // Update label position if exists
+                    if (cube.labelObject) {
+                        cube.labelObject.position.set(cube.x, totalHeight + 2, cube.z);
+                    }
+
                     needsUpdate = true;
                 }
             });
@@ -1371,6 +1606,58 @@
             });
 
             composer.render();
+            labelRenderer.render(scene, camera);
+            updateLabelVisibility();
+        }
+
+        function updateLabelVisibility() {
+            // Get all visible labels with their screen positions
+            const labels = cubeData
+                .filter(cube => cube.labelObject)
+                .map(cube => {
+                    const labelDiv = cube.labelObject.element;
+                    const rect = labelDiv.getBoundingClientRect();
+                    return {
+                        cube: cube,
+                        element: labelDiv,
+                        rect: rect,
+                        center: {
+                            x: rect.left + rect.width / 2,
+                            y: rect.top + rect.height / 2
+                        }
+                    };
+                });
+
+            // Check each label against others
+            labels.forEach(label1 => {
+                let hasOverlap = false;
+
+                labels.forEach(label2 => {
+                    if (label1 === label2) return;
+
+                    // Check if rectangles overlap
+                    const overlap = !(
+                        label1.rect.right < label2.rect.left ||
+                        label1.rect.left > label2.rect.right ||
+                        label1.rect.bottom < label2.rect.top ||
+                        label1.rect.top > label2.rect.bottom
+                    );
+
+                    if (overlap) {
+                        // Calculate distance to camera
+                        const dist1 = camera.position.distanceTo(label1.cube.labelObject.position);
+                        const dist2 = camera.position.distanceTo(label2.cube.labelObject.position);
+
+                        // Hide the one that's farther from camera
+                        if (dist1 > dist2) {
+                            hasOverlap = true;
+                        }
+                    }
+                });
+
+                // Set opacity based on overlap
+                label1.element.style.opacity = hasOverlap ? '0' : '1';
+            });
         }
 
         init();
