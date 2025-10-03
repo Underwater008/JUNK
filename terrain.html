@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Terrain Grid Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #fff;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #0ff;
+            font-size: 14px;
+            text-shadow: 0 0 10px #0ff;
+            z-index: 10;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0ff;
+            font-size: 24px;
+            text-shadow: 0 0 20px #0ff;
+            z-index: 5;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0ff;
+            padding: 15px;
+            color: #0ff;
+            font-size: 12px;
+            min-width: 200px;
+            z-index: 10;
+        }
+        #controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 0 0 10px #0ff;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 3px;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+        .control-group input[type="number"] {
+            width: 60px;
+            background: #000;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        TERRAIN GRID SYSTEM<br>
+        Mouse: Rotate | Scroll: Zoom
+    </div>
+    <div id="loading">INITIALIZING TERRAIN...</div>
+
+    <div id="controls">
+        <h3>CAMERA CONTROLS</h3>
+        <div class="control-group">
+            <label>FOV: <span id="fov-value">30</span></label>
+            <input type="range" id="fov" min="30" max="120" value="30" step="1">
+        </div>
+        <div class="control-group">
+            <label>Position Y: <span id="pos-y-value">260</span></label>
+            <input type="range" id="pos-y" min="10" max="320" value="260" step="1">
+        </div>
+        <div class="control-group">
+            <label>Position X: <span id="pos-x-value">80</span></label>
+            <input type="range" id="pos-x" min="-200" max="200" value="80" step="1">
+        </div>
+        <div class="control-group">
+            <label>Position Z: <span id="pos-z-value">80</span></label>
+            <input type="range" id="pos-z" min="-200" max="200" value="80" step="1">
+        </div>
+        <div class="control-group">
+            <label>Height Scale: <span id="height-value">15</span></label>
+            <input type="range" id="height-scale" min="5" max="100" value="15" step="1">
+        </div>
+        <div class="control-group">
+            <label>Sea Threshold: <span id="sea-threshold-value">0.078</span></label>
+            <input type="range" id="sea-threshold" min="0" max="0.5" value="0.078" step="0.01">
+            <input type="number" id="sea-threshold-input" min="0" max="0.5" value="0.078" step="0.001">
+        </div>
+        <div class="control-group">
+            <label>Sea Level Height: <span id="sea-height-value">1.00</span></label>
+            <input type="range" id="sea-height" min="0.1" max="10" value="1.0" step="0.01">
+            <input type="number" id="sea-height-input" min="0.1" max="10" value="1.0" step="0.01">
+        </div>
+        <div class="control-group">
+            <label>Material Rotation: <span id="mat-rotation-value">180</span>°</label>
+            <input type="range" id="mat-rotation" min="-180" max="180" value="180" step="1">
+        </div>
+        <div class="control-group">
+            <label><input type="checkbox" id="mat-flip-u"> Flip U</label>
+            <label style="margin-left:10px;"><input type="checkbox" id="mat-flip-v" checked> Flip V</label>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let instancedMesh;
+        let cubeData = [];
+        let animationStartTime = 0;
+        let cameraMixer = null;
+        let cameraAction = null;
+        let cameraIntroPlaying = false;
+        let posXSlider = null;
+        let posXValueDisplay = null;
+        let posYSlider = null;
+        let posYValueDisplay = null;
+        // Material map data for land coloring
+        let matImageData = null;
+        let matW = 0;
+        let matH = 0;
+        let flipMaterialU = true;  // allow horizontal flip
+        let flipMaterialV = true;  // vertical flip (image origin alignment)
+        let matRotationDeg = 180; // rotation around material center (default sweet spot)
+        const clock = new THREE.Clock();
+        let heightScale = 15;
+        const gridGap = 1.0;
+        const cubeSize = 1.0;
+        const sampleRate = 4; // Sample every Nth pixel (128x128 = 16k instances)
+        let seaThreshold = 0.078; // Grayscale cutoff: <= is ocean (default sweet spot)
+        let seaFlatHeight = 1.0; // Flat column height for ocean
+
+        const cameraStartPos = { x: 80, y: 260, z: 80 };
+        const cameraEndPos = { x: 80, y: 140, z: 140 };
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            // Camera - start at high position for entrance animation
+            camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(cameraStartPos.x, cameraStartPos.y, cameraStartPos.z);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            scene.add(directionalLight);
+
+            const pointLight1 = new THREE.PointLight(0x00ffff, 1.5, 200);
+            pointLight1.position.set(50, 40, 0);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xff00ff, 1.5, 200);
+            pointLight2.position.set(-50, 40, 0);
+            scene.add(pointLight2);
+
+            window.addEventListener('resize', onWindowResize);
+
+            // Setup control panel
+            setupControls();
+
+            // Load heightmap
+            loadHeightmap();
+        }
+
+        function setupControls() {
+            // FOV control
+            const fovSlider = document.getElementById('fov');
+            const fovValue = document.getElementById('fov-value');
+            fovSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                camera.fov = value;
+                camera.updateProjectionMatrix();
+                fovValue.textContent = value;
+            });
+
+            // Position Y control
+            posYSlider = document.getElementById('pos-y');
+            posYValueDisplay = document.getElementById('pos-y-value');
+            posYSlider.value = camera.position.y;
+            posYValueDisplay.textContent = Math.round(camera.position.y);
+            posYSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                camera.position.y = value;
+                posYValueDisplay.textContent = value;
+            });
+
+            // Position X control
+            posXSlider = document.getElementById('pos-x');
+            posXValueDisplay = document.getElementById('pos-x-value');
+            posXSlider.value = camera.position.x;
+            posXValueDisplay.textContent = Math.round(camera.position.x);
+            posXSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                camera.position.x = value;
+                posXValueDisplay.textContent = value;
+            });
+
+            // Position Z control
+            const posZSlider = document.getElementById('pos-z');
+            const posZValue = document.getElementById('pos-z-value');
+            posZSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                camera.position.z = value;
+                posZValue.textContent = value;
+            });
+
+            // Height scale control (live update land cube heights)
+            const heightSlider = document.getElementById('height-scale');
+            const heightValue = document.getElementById('height-value');
+            heightSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                heightScale = value;
+                heightValue.textContent = value;
+                applyHeightScale();
+            });
+
+            // Sea threshold control (live recolor + flatten ocean)
+            const seaSlider = document.getElementById('sea-threshold');
+            const seaValue = document.getElementById('sea-threshold-value');
+            const seaInput = document.getElementById('sea-threshold-input');
+            const clampSea = (v) => Math.max(parseFloat(seaSlider.min), Math.min(parseFloat(seaSlider.max), v));
+
+            const syncSeaUI = (v) => {
+                const vv = clampSea(v);
+                seaSlider.value = vv;
+                seaInput.value = vv;
+                seaValue.textContent = parseFloat(vv).toFixed(2);
+            };
+
+            syncSeaUI(seaThreshold);
+
+            seaSlider.addEventListener('input', (e) => {
+                const value = clampSea(parseFloat(e.target.value));
+                seaThreshold = value;
+                seaValue.textContent = value.toFixed(2);
+                seaInput.value = value;
+                applySeaThreshold();
+            });
+
+            seaInput.addEventListener('input', (e) => {
+                const raw = parseFloat(e.target.value);
+                if (isNaN(raw)) return;
+                const value = clampSea(raw);
+                seaThreshold = value;
+                seaSlider.value = value;
+                seaValue.textContent = value.toFixed(2);
+                applySeaThreshold();
+            });
+
+            // Sea level height control (live update ocean flat height)
+            const seaHeightSlider = document.getElementById('sea-height');
+            const seaHeightInput = document.getElementById('sea-height-input');
+            const seaHeightValue = document.getElementById('sea-height-value');
+            const clampSeaHeight = (v) => Math.max(parseFloat(seaHeightSlider.min), Math.min(parseFloat(seaHeightSlider.max), v));
+
+            const syncSeaHeightUI = (v) => {
+                const vv = clampSeaHeight(v);
+                seaHeightSlider.value = vv;
+                seaHeightInput.value = vv;
+                seaHeightValue.textContent = parseFloat(vv).toFixed(2);
+            };
+
+            syncSeaHeightUI(seaFlatHeight);
+
+            const applySeaHeight = (value) => {
+                seaFlatHeight = value;
+                applySeaThreshold();
+            };
+
+            seaHeightSlider.addEventListener('input', (e) => {
+                const value = clampSeaHeight(parseFloat(e.target.value));
+                syncSeaHeightUI(value);
+                applySeaHeight(value);
+            });
+            seaHeightInput.addEventListener('input', (e) => {
+                const raw = parseFloat(e.target.value);
+                if (isNaN(raw)) return;
+                const value = clampSeaHeight(raw);
+                syncSeaHeightUI(value);
+                applySeaHeight(value);
+            });
+
+            // Material rotation slider
+            const matRotSlider = document.getElementById('mat-rotation');
+            const matRotValue = document.getElementById('mat-rotation-value');
+            matRotSlider.value = matRotationDeg;
+            matRotValue.textContent = Math.round(matRotationDeg);
+            matRotSlider.addEventListener('input', (e) => {
+                matRotationDeg = parseFloat(e.target.value) || 0;
+                matRotValue.textContent = Math.round(matRotationDeg);
+                applySeaThreshold();
+            });
+
+            // Material flip toggles
+            const flipUEl = document.getElementById('mat-flip-u');
+            const flipVEl = document.getElementById('mat-flip-v');
+            flipUEl.checked = !!flipMaterialU;
+            flipVEl.checked = !!flipMaterialV;
+            flipUEl.addEventListener('change', (e) => {
+                flipMaterialU = !!e.target.checked;
+                applySeaThreshold();
+            });
+            flipVEl.addEventListener('change', (e) => {
+                flipMaterialV = !!e.target.checked;
+                applySeaThreshold();
+            });
+        }
+
+        function loadTexturePromise(url) {
+            return new Promise((resolve, reject) => {
+                new THREE.TextureLoader().load(url, resolve, undefined, reject);
+            });
+        }
+
+        function getImageDataFromTexture(tex) {
+            const img = tex.image;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            return { data: imageData.data, width: canvas.width, height: canvas.height };
+        }
+
+        function loadHeightmap() {
+            console.log('Loading maps...');
+            Promise.all([
+                loadTexturePromise('TerrainFromWorldBuilder4.png'),
+                loadTexturePromise('Terrain/Islands_MaterialForBlender.jpg')
+            ]).then(([heightTex, materialTex]) => {
+                const h = getImageDataFromTexture(heightTex);
+                const m = getImageDataFromTexture(materialTex);
+
+                // Store material globally for land coloring
+                matImageData = m.data;
+                matW = m.width;
+                matH = m.height;
+
+                console.log('Creating terrain grid...');
+                createGridTerrain(h.data, h.width, h.height);
+                console.log('Terrain created, starting animation');
+
+                document.getElementById('loading').style.display = 'none';
+
+                animationStartTime = Date.now();
+                startCameraIntro();
+            }).catch((error) => {
+                console.error('Error loading maps:', error);
+                document.getElementById('loading').innerText = 'ERROR LOADING TERRAIN';
+            });
+        }
+
+        // Simple noise function
+        function noise2D(x, y) {
+            const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        // Sample material color with optional V-flip and rotation
+        function sampleMaterialColor(u, v) {
+            if (!matImageData) return [1, 1, 1];
+            let uu = Math.max(0, Math.min(1, u));
+            let vv = Math.max(0, Math.min(1, v));
+            // Apply flips first if enabled
+            if (flipMaterialU) uu = 1 - uu;
+            if (flipMaterialV) vv = 1 - vv;
+            // Apply rotation about center (0.5, 0.5)
+            if (matRotationDeg !== 0) {
+                const rad = matRotationDeg * Math.PI / 180;
+                const cosr = Math.cos(rad);
+                const sinr = Math.sin(rad);
+                const cx = uu - 0.5;
+                const cy = vv - 0.5;
+                const rx = cx * cosr - cy * sinr;
+                const ry = cx * sinr + cy * cosr;
+                uu = Math.max(0, Math.min(1, rx + 0.5));
+                vv = Math.max(0, Math.min(1, ry + 0.5));
+            }
+            const x = Math.min(matW - 1, Math.floor(uu * matW));
+            const y = Math.min(matH - 1, Math.floor(vv * matH));
+            const i = (y * matW + x) * 4;
+            return [matImageData[i] / 255, matImageData[i + 1] / 255, matImageData[i + 2] / 255];
+        }
+
+        function createGridTerrain(data, width, height) {
+            const sampledWidth = Math.floor(width / sampleRate);
+            const sampledHeight = Math.floor(height / sampleRate);
+            const borderSize = 30; // Extra space for circular border
+            const extendedWidth = sampledWidth + borderSize * 2;
+            const extendedHeight = sampledHeight + borderSize * 2;
+
+            // Center the extended grid
+            const offsetX = (extendedWidth * gridGap) / 2;
+            const offsetZ = (extendedHeight * gridGap) / 2;
+
+            const centerX = extendedWidth / 2;
+            const centerZ = extendedHeight / 2;
+            const baseRadius = Math.min(sampledWidth, sampledHeight) / 2 + 15; // Circular boundary
+            const maxDist = baseRadius + 20;
+
+            // First pass: count valid cubes and collect their data
+            const cubeInfo = [];
+            const heightMap = new Map(); // Store sampled data by position
+
+            // Ocean defined using grayscale threshold from heightmap
+
+            for (let z = 0; z < extendedHeight; z++) {
+                for (let x = 0; x < extendedWidth; x++) {
+                    // Distance from center
+                    const dx = x - centerX;
+                    const dz = z - centerZ;
+                    const distFromCenter = Math.sqrt(dx * dx + dz * dz);
+
+                    // Add noise to radius for irregular edge
+                    const angle = Math.atan2(dz, dx);
+                    const noiseVal = noise2D(Math.cos(angle) * 0.5, Math.sin(angle) * 0.5);
+                    const secondNoise = noise2D(x * 0.1, z * 0.1);
+                    const noisyRadius = baseRadius + noiseVal * 15 + secondNoise * 8;
+
+                    // Skip cubes outside the noisy circular boundary
+                    if (distFromCenter > noisyRadius) continue;
+
+                    // Check if this position is within the heightmap
+                    const isInHeightmap = x >= borderSize && x < sampledWidth + borderSize &&
+                                         z >= borderSize && z < sampledHeight + borderSize;
+
+                    let grayscale = 0;
+                    let targetHeight = 0.5;
+                    let isOcean = false;
+
+                    if (isInHeightmap) {
+                        const dataX = (x - borderSize) * sampleRate;
+                        const dataZ = (z - borderSize) * sampleRate;
+                        const index = (dataZ * width + dataX) * 4;
+                        grayscale = data[index] / 255;
+                        isOcean = grayscale <= seaThreshold;
+                        targetHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
+                    } else {
+                        // Border area - blend with nearest heightmap edge
+                        const blendDistance = 10; // Pixels over which to blend
+
+                        // Find nearest point on heightmap edge
+                        let nearestX = Math.max(borderSize, Math.min(x, sampledWidth + borderSize - 1));
+                        let nearestZ = Math.max(borderSize, Math.min(z, sampledHeight + borderSize - 1));
+
+                        // Distance from heightmap edge
+                        let distToEdge = Math.min(
+                            Math.abs(x - borderSize),
+                            Math.abs(x - (sampledWidth + borderSize - 1)),
+                            Math.abs(z - borderSize),
+                            Math.abs(z - (sampledHeight + borderSize - 1))
+                        );
+
+                        if (x < borderSize || x >= sampledWidth + borderSize ||
+                            z < borderSize || z >= sampledHeight + borderSize) {
+                            distToEdge = Math.sqrt(
+                                Math.pow(Math.max(0, borderSize - x, x - (sampledWidth + borderSize - 1)), 2) +
+                                Math.pow(Math.max(0, borderSize - z, z - (sampledHeight + borderSize - 1)), 2)
+                            );
+                        }
+
+                        // Sample from nearest edge pixel
+                        const edgeDataX = (nearestX - borderSize) * sampleRate;
+                        const edgeDataZ = (nearestZ - borderSize) * sampleRate;
+                        const edgeIndex = (edgeDataZ * width + edgeDataX) * 4;
+                        const edgeGrayscale = data[edgeIndex] / 255;
+
+                        // Blend between edge value and ocean
+                        const blendFactor = Math.min(distToEdge / blendDistance, 1);
+                        grayscale = edgeGrayscale * (1 - blendFactor) + 0.05 * blendFactor;
+                        isOcean = grayscale <= seaThreshold;
+                        targetHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
+                    }
+
+                    heightMap.set(`${x},${z}`, { grayscale, isOcean });
+                    cubeInfo.push({ x, z, grayscale, targetHeight, distFromCenter, isOcean });
+                }
+            }
+
+            // Ocean/land already classified from grayscale threshold above
+
+            // Second pass: detect shore areas (ocean near land)
+            cubeInfo.forEach(cube => {
+                if (cube.isOcean) { // Ocean cube (black/very dark)
+                    // Check neighbors for land
+                    let hasLandNearby = false;
+                    for (let dz = -2; dz <= 2; dz++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            if (dx === 0 && dz === 0) continue;
+                            const neighbor = heightMap.get(`${cube.x + dx},${cube.z + dz}`);
+                            if (neighbor !== undefined && !neighbor.isOcean) {
+                                hasLandNearby = true;
+                                break;
+                            }
+                        }
+                        if (hasLandNearby) break;
+                    }
+                    cube.isNearShore = hasLandNearby;
+                } else {
+                    cube.isNearShore = false;
+                }
+            });
+
+            const count = cubeInfo.length;
+            console.log(`Creating ${count} instanced cubes with circular noisy edge (grid: ${extendedWidth}x${extendedHeight})`);
+
+            // Create geometry and material
+            const geometry = new THREE.BoxGeometry(cubeSize, 1, cubeSize);
+            const material = new THREE.MeshBasicMaterial({
+                vertexColors: true
+            });
+
+            // Create instanced mesh
+            instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+            instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+            // Set up colors
+            const colors = [];
+            const oceanColor = new THREE.Color(0x1e3a5f);
+            const landColor = new THREE.Color(0xffffff);
+
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3();
+            const scale = new THREE.Vector3(1, 0.01, 1);
+
+            // Third pass: create instances from valid cubes
+            cubeInfo.forEach((cube, idx) => {
+                const { x, z, grayscale, targetHeight, distFromCenter, isNearShore, isOcean } = cube;
+
+                // Compute UV into material map anchored to heightmap area
+                const u = Math.max(0, Math.min(1, (x - borderSize) / sampledWidth));
+                const v = Math.max(0, Math.min(1, (z - borderSize) / sampledHeight));
+
+                // Color: ocean fixed blue; land uses material map color
+                let color;
+                if (isOcean) {
+                    color = oceanColor;
+                } else {
+                    const [r, g, b] = sampleMaterialColor(u, v);
+                    color = new THREE.Color().setRGB(r, g, b);
+                }
+                // Add color for this instance
+                colors.push(color.r, color.g, color.b);
+
+                // No jitter: ensure a tight grid with no gaps
+                const jitterAmount = 0.0;
+                const jitterX = (noise2D(x * 0.5, z * 0.3) - 0.5) * jitterAmount;
+                const jitterZ = (noise2D(x * 0.3, z * 0.5) - 0.5) * jitterAmount;
+
+                // Position with jitter
+                position.set(
+                    x * gridGap - offsetX,
+                    0,
+                    z * gridGap - offsetZ
+                );
+
+                matrix.compose(position, new THREE.Quaternion(), scale);
+                instancedMesh.setMatrixAt(idx, matrix);
+
+                // Store animation data with jittered position
+                cubeData.push({
+                    index: idx,
+                    x: x * gridGap - offsetX,
+                    z: z * gridGap - offsetZ,
+                    targetHeight: targetHeight,
+                    baseHeight: grayscale * heightScale + 0.5,
+                    u: u,
+                    v: v,
+                    currentHeight: 0,
+                    delay: getAnimationDelay(x, z, sampledWidth, sampledHeight),
+                    animated: false,
+                    isNearShore: isNearShore,
+                    isOcean: isOcean,
+                    grayscale: grayscale,
+                    gridX: x,
+                    gridZ: z
+                });
+            });
+
+            // Set colors
+            geometry.setAttribute('color', new THREE.InstancedBufferAttribute(new Float32Array(colors), 3));
+
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            scene.add(instancedMesh);
+        }
+
+        function getAnimationDelay(x, z, width, height) {
+            // Ripple from center
+            const centerX = width / 2;
+            const centerZ = height / 2;
+            const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(z - centerZ, 2));
+            const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerZ, 2));
+            return (distance / maxDistance) * 2000; // 2 second wave
+        }
+
+        function startCameraIntro() {
+            const midPoint = new THREE.Vector3(
+                cameraStartPos.x + 30,
+                cameraStartPos.y - 70,
+                cameraStartPos.z + 60
+            );
+
+            if (!cameraMixer) {
+                cameraMixer = new THREE.AnimationMixer(camera);
+
+                // Build a smooth curve through start -> mid -> end
+                const start = new THREE.Vector3(cameraStartPos.x, cameraStartPos.y, cameraStartPos.z);
+                const end = new THREE.Vector3(cameraEndPos.x, cameraEndPos.y, cameraEndPos.z);
+                const curve = new THREE.CatmullRomCurve3([start, midPoint, end], false, 'catmullrom', 0.5);
+
+                // Sample the curve to create a single smooth motion
+                // Shorter duration for earlier stop, with ease-out for gentle finish
+                const duration = 3.2; // seconds
+                const samples = 100;
+                const times = new Float32Array(samples);
+                const values = new Float32Array(samples * 3);
+
+                for (let i = 0; i < samples; i++) {
+                    const t = i / (samples - 1);
+                    // Ease-out on the curve parameter so motion decelerates near the end
+                    const te = 1 - Math.pow(1 - t, 3); // easeOutCubic
+                    const p = curve.getPoint(te);
+                    times[i] = t * duration;
+                    values[i * 3 + 0] = p.x;
+                    values[i * 3 + 1] = p.y;
+                    values[i * 3 + 2] = p.z;
+                }
+
+                const positionTrack = new THREE.VectorKeyframeTrack('.position', times, values);
+                positionTrack.setInterpolation(THREE.InterpolateSmooth);
+                const clip = new THREE.AnimationClip('CameraIntro', duration, [positionTrack]);
+
+                cameraAction = cameraMixer.clipAction(clip);
+                cameraAction.setLoop(THREE.LoopOnce, 1);
+                cameraAction.clampWhenFinished = true;
+
+                cameraMixer.addEventListener('finished', (event) => {
+                    if (event.action === cameraAction) {
+                        cameraIntroPlaying = false;
+                        updateCameraControlDisplays();
+                    }
+                });
+            }
+
+            camera.position.set(cameraStartPos.x, cameraStartPos.y, cameraStartPos.z);
+            controls.target.set(0, 0, 0);
+            controls.update();
+
+            if (cameraAction) {
+                cameraAction.reset();
+                cameraAction.play();
+            }
+
+            cameraIntroPlaying = true;
+            updateCameraControlDisplays();
+        }
+
+        function updateCameraControlDisplays() {
+            const yActive = posYSlider && document.activeElement === posYSlider;
+            if (posYSlider && !yActive) {
+                posYSlider.value = Math.round(camera.position.y);
+            }
+            if (posYValueDisplay && !yActive) {
+                posYValueDisplay.textContent = Math.round(camera.position.y);
+            }
+
+            const xActive = posXSlider && document.activeElement === posXSlider;
+            if (posXSlider && !xActive) {
+                posXSlider.value = Math.round(camera.position.x);
+            }
+            if (posXValueDisplay && !xActive) {
+                posXValueDisplay.textContent = Math.round(camera.position.x);
+            }
+        }
+
+        function easeOutBack(x) {
+            const c1 = 1.70158;
+            const c3 = c1 + 1;
+            return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+        }
+
+        function animateCubes() {
+            if (!instancedMesh) return;
+
+            const elapsed = Date.now() - animationStartTime;
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+            let needsUpdate = false;
+            
+
+            cubeData.forEach(cube => {
+                let heightToUse = cube.currentHeight;
+
+                if (!cube.animated) {
+                    const timeSinceDelay = elapsed - cube.delay;
+
+                    if (timeSinceDelay > 0) {
+                        const duration = 800;
+                        const progress = Math.min(timeSinceDelay / duration, 1);
+
+                        if (progress >= 1) {
+                            cube.animated = true;
+                        }
+
+                        const easedProgress = easeOutBack(progress);
+                        cube.currentHeight = cube.targetHeight * easedProgress;
+                        heightToUse = cube.currentHeight;
+                        needsUpdate = true;
+                    }
+                }
+
+                if (needsUpdate) {
+                    // Update instance matrix
+                    position.set(cube.x, heightToUse / 2, cube.z);
+                    scale.set(1, Math.max(0.01, heightToUse), 1);
+                    matrix.compose(position, quaternion, scale);
+                    instancedMesh.setMatrixAt(cube.index, matrix);
+                }
+            });
+
+            if (needsUpdate) {
+                instancedMesh.instanceMatrix.needsUpdate = true;
+            }
+            
+        }
+
+        function applySeaThreshold() {
+            if (!instancedMesh) return;
+
+            const geometry = instancedMesh.geometry;
+            const colorAttr = geometry.getAttribute('color');
+            const oceanColor = new THREE.Color(0x1e3a5f);
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+
+            cubeData.forEach((cube) => {
+                const isOcean = cube.grayscale <= seaThreshold;
+                cube.isOcean = isOcean;
+                const newTarget = isOcean ? seaFlatHeight : (cube.grayscale * heightScale + 0.5);
+                cube.targetHeight = newTarget;
+                cube.currentHeight = newTarget;
+                cube.animated = true;
+
+                // Update color
+                const idx = cube.index * 3;
+                let cr, cg, cb;
+                if (isOcean) {
+                    cr = oceanColor.r; cg = oceanColor.g; cb = oceanColor.b;
+                } else {
+                    // Sample land color from material map honoring rotation
+                    const baseU = cube.u !== undefined ? cube.u : 0;
+                    const baseV = cube.v !== undefined ? cube.v : 0;
+                    const [sr, sg, sb] = sampleMaterialColor(baseU, baseV);
+                    cr = sr; cg = sg; cb = sb;
+                }
+                colorAttr.array[idx + 0] = cr;
+                colorAttr.array[idx + 1] = cg;
+                colorAttr.array[idx + 2] = cb;
+
+                // Update transform
+                position.set(cube.x, newTarget / 2, cube.z);
+                scale.set(1, Math.max(0.01, newTarget), 1);
+                matrix.compose(position, quaternion, scale);
+                instancedMesh.setMatrixAt(cube.index, matrix);
+            });
+
+            colorAttr.needsUpdate = true;
+            instancedMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function applyHeightScale() {
+            if (!instancedMesh) return;
+
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+
+            cubeData.forEach((cube) => {
+                const isOcean = cube.grayscale <= seaThreshold;
+                const newTarget = isOcean ? seaFlatHeight : (cube.grayscale * heightScale + 0.5);
+                cube.isOcean = isOcean;
+                cube.targetHeight = newTarget;
+                cube.currentHeight = newTarget;
+                cube.animated = true;
+
+                // Update transform only (colors unchanged here)
+                position.set(cube.x, newTarget / 2, cube.z);
+                scale.set(1, Math.max(0.01, newTarget), 1);
+                matrix.compose(position, quaternion, scale);
+                instancedMesh.setMatrixAt(cube.index, matrix);
+            });
+
+            instancedMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updateCameraAnimation(delta) {
+            if (!cameraMixer || !cameraAction) return;
+
+            cameraMixer.update(delta);
+
+            if (cameraIntroPlaying) {
+                updateCameraControlDisplays();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            controls.update();
+            animateCubes();
+            updateCameraAnimation(delta);
+
+            // Rotate lights
+            const time = Date.now() * 0.0003;
+            scene.children.forEach(child => {
+                if (child instanceof THREE.PointLight) {
+                    const radius = 80;
+                    child.position.x = Math.sin(time) * radius;
+                    child.position.z = Math.cos(time) * radius;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

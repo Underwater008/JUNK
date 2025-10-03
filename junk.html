@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Procedural Atlas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-gradient: radial-gradient(circle at 20% 20%, #161c28 0%, #05070c 60%, #010203 100%);
+      --accent: #7c9cff;
+      --accent-soft: rgba(124, 156, 255, 0.16);
+      --text-primary: #f6f7fb;
+      --text-secondary: rgba(246, 247, 251, 0.65);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+    }
+
+    .hud {
+      position: fixed;
+      top: 32px;
+      left: 32px;
+      padding: 20px 24px;
+      backdrop-filter: blur(18px);
+      background: linear-gradient(135deg, rgba(10, 14, 24, 0.82), rgba(10, 12, 20, 0.45));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+      max-width: 360px;
+      z-index: 4;
+    }
+
+    .hud h1 {
+      margin: 0 0 8px;
+      font-size: 1.35rem;
+      letter-spacing: 0.02em;
+      font-weight: 700;
+    }
+
+    .hud p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: radial-gradient(circle at center, rgba(35, 48, 87, 0.6), rgba(3, 5, 9, 0.92));
+      z-index: 5;
+      transition: opacity 0.85s ease, visibility 0.85s ease;
+    }
+
+    .loading.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loading__spinner {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: var(--accent-soft);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading__spinner::before,
+    .loading__spinner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: conic-gradient(from 0deg, rgba(124, 156, 255, 0.05), rgba(124, 156, 255, 0.4), rgba(124, 156, 255, 0.05));
+      animation: spin 2.1s linear infinite;
+    }
+
+    .loading__spinner::after {
+      inset: 10px;
+      background: rgba(8, 12, 20, 0.9);
+      animation: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading__content {
+      display: grid;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .loading__title {
+      font-size: 1.05rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+
+    .loading__subtitle {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+    }
+
+    .loading__progress-wrapper {
+      width: 200px;
+      height: 4px;
+      background: rgba(124, 156, 255, 0.2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .loading__progress {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(124, 156, 255, 0.25), var(--accent));
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    @media (max-width: 600px) {
+      .hud {
+        top: auto;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 48px);
+        padding: 18px 22px;
+      }
+
+      .hud h1 {
+        font-size: 1.15rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="hud">
+    <h1>Atlas // Islands Prototype</h1>
+    <p>Instanced terrain built from a single height map. Explore the landscape, catch the coaxed waves, and enjoy the cinematic entry.</p>
+  </div>
+  <div class="loading" id="loading">
+    <div class="loading__spinner"></div>
+    <div class="loading__content">
+      <div class="loading__title">Open Realms</div>
+      <div class="loading__subtitle">Synthesizing archipelago heightfields</div>
+      <div class="loading__progress-wrapper">
+        <div class="loading__progress"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
+
+    const app = document.getElementById('app');
+    const loadingOverlay = document.getElementById('loading');
+    const progressBar = loadingOverlay.querySelector('.loading__progress');
+
+    const manager = new THREE.LoadingManager();
+    manager.onProgress = (_, loaded, total) => {
+      const progress = total === 0 ? 0 : (loaded / total) * 100;
+      progressBar.style.width = progress.toFixed(0) + '%';
+    };
+
+    let cameraTransitionActive = true;
+    let cameraTransitionStart = 0;
+    let cameraTransitionDuration = 4.5;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    app.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = null;
+    scene.fog = new THREE.FogExp2(0x06080e, 0.0045);
+
+    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 420, 0);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.055;
+    controls.enablePan = false;
+    controls.enabled = false;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.minDistance = 80;
+    controls.maxDistance = 520;
+
+    const ambient = new THREE.AmbientLight(0xaab4ff, 0.55);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+    sun.position.set(210, 320, 160);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 1200;
+    sun.shadow.camera.left = -400;
+    sun.shadow.camera.right = 400;
+    sun.shadow.camera.top = 400;
+    sun.shadow.camera.bottom = -400;
+    scene.add(sun);
+
+    const backLight = new THREE.DirectionalLight(0x8aa7ff, 0.45);
+    backLight.position.set(-340, 260, -220);
+    scene.add(backLight);
+
+    const clock = new THREE.Clock();
+
+    function hash(x, y) {
+      return (Math.sin(x * 127.1 + y * 311.7) * 43758.5453123) % 1;
+    }
+
+    function valueNoise(x, y) {
+      const xi = Math.floor(x);
+      const yi = Math.floor(y);
+      const xf = x - xi;
+      const yf = y - yi;
+
+      const topRight = hash(xi + 1, yi + 1);
+      const topLeft = hash(xi, yi + 1);
+      const bottomRight = hash(xi + 1, yi);
+      const bottomLeft = hash(xi, yi);
+
+      const u = xf * xf * (3 - 2 * xf);
+      const v = yf * yf * (3 - 2 * yf);
+
+      const top = topLeft + u * (topRight - topLeft);
+      const bottom = bottomLeft + u * (bottomRight - bottomLeft);
+
+      return bottom + v * (top - bottom);
+    }
+
+    function fractalNoise(x, y, octaves = 4, persistence = 0.5, lacunarity = 2) {
+      let total = 0;
+      let amplitude = 1;
+      let frequency = 1;
+      let maxValue = 0;
+      for (let i = 0; i < octaves; i += 1) {
+        total += valueNoise(x * frequency, y * frequency) * amplitude;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= lacunarity;
+      }
+      return total / maxValue;
+    }
+
+    async function buildScene() {
+      const textureLoader = new THREE.TextureLoader(manager);
+      const heightTexture = await textureLoader.loadAsync('TerrainFromWorldBuilder4.png');
+
+      const sampleResolution = 320;
+      const res = Math.min(sampleResolution, heightTexture.image.width, heightTexture.image.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = res;
+      canvas.height = res;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(heightTexture.image, 0, 0, res, res);
+      const imageData = ctx.getImageData(0, 0, res, res).data;
+
+      const spacing = 1.35;
+      const half = (res - 1) * spacing * 0.5;
+      const heightMultiplier = 140;
+      const tileScale = 0.94;
+
+      const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({
+        metalness: 0.18,
+        roughness: 0.82,
+        vertexColors: true,
+      });
+
+      const maxInstances = res * res;
+      const instancedMesh = new THREE.InstancedMesh(boxGeometry, material, maxInstances);
+      instancedMesh.castShadow = true;
+      instancedMesh.receiveShadow = true;
+      instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+      const lowColor = new THREE.Color('#0d3949');
+      const shoreColor = new THREE.Color('#0b7dbd');
+      const midColor = new THREE.Color('#24a87b');
+      const highColor = new THREE.Color('#f0d072');
+      const peakColor = new THREE.Color('#fafafa');
+      const scratchColor = new THREE.Color();
+
+      const dummy = new THREE.Object3D();
+      let index = 0;
+
+      for (let y = 0; y < res; y += 1) {
+        for (let x = 0; x < res; x += 1) {
+          const i = (y * res + x) * 4;
+          const heightValue = imageData[i] / 255;
+          const normalizedX = (x / (res - 1)) * 2 - 1;
+          const normalizedY = (y / (res - 1)) * 2 - 1;
+          const radial = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+          const edgeNoise = fractalNoise(normalizedX * 2.7 + 12.3, normalizedY * 2.7 - 4.1, 4, 0.55) * 0.35;
+          const edgeMask = radial + edgeNoise;
+
+          if (edgeMask > 1.02) {
+            continue;
+          }
+
+          const edgeFalloff = THREE.MathUtils.smoothstep(edgeMask, 0.55, 1.02);
+          const shapedHeight = Math.pow(heightValue, 1.45) * heightMultiplier;
+          const finalHeight = THREE.MathUtils.lerp(shapedHeight, 4, edgeFalloff);
+
+          if (finalHeight <= 3) {
+            continue;
+          }
+
+          const worldX = x * spacing - half;
+          const worldZ = y * spacing - half;
+
+          dummy.position.set(worldX, finalHeight * 0.5, worldZ);
+          dummy.scale.set(tileScale, finalHeight, tileScale);
+          dummy.updateMatrix();
+
+          instancedMesh.setMatrixAt(index, dummy.matrix);
+
+          let color;
+          const elevation = finalHeight / heightMultiplier;
+          if (elevation < 0.25) {
+            color = scratchColor.copy(lowColor).lerp(shoreColor, THREE.MathUtils.smoothstep(elevation, 0.12, 0.27));
+          } else if (elevation < 0.55) {
+            color = scratchColor.copy(shoreColor).lerp(midColor, THREE.MathUtils.smoothstep(elevation, 0.22, 0.58));
+          } else if (elevation < 0.78) {
+            color = scratchColor.copy(midColor).lerp(highColor, THREE.MathUtils.smoothstep(elevation, 0.48, 0.82));
+          } else {
+            color = scratchColor.copy(highColor).lerp(peakColor, THREE.MathUtils.smoothstep(elevation, 0.7, 1.0));
+          }
+
+          instancedMesh.setColorAt(index, color);
+
+          index += 1;
+        }
+      }
+
+      instancedMesh.count = index;
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      if (instancedMesh.instanceColor) {
+        instancedMesh.instanceColor.needsUpdate = true;
+      }
+
+      scene.add(instancedMesh);
+
+      const oceanSize = Math.max(1200, res * spacing * 1.8);
+      const oceanGeometry = new THREE.PlaneGeometry(oceanSize, oceanSize, 256, 256);
+      const oceanUniforms = {
+        uTime: { value: 0 },
+        uWaveHeight: { value: 4.2 },
+        uFrequency: { value: 0.045 },
+        uSpeed: { value: 0.42 },
+        uDeepColor: { value: new THREE.Color('#021024') },
+        uShallowColor: { value: new THREE.Color('#0d3f6b') },
+        uFoamColor: { value: new THREE.Color('#eff9ff') },
+      };
+
+      const oceanMaterial = new THREE.ShaderMaterial({
+        uniforms: oceanUniforms,
+        vertexShader: `
+          uniform float uTime;
+          uniform float uWaveHeight;
+          uniform float uFrequency;
+          uniform float uSpeed;
+          varying vec2 vUv;
+          varying float vWave;
+          void main() {
+            vUv = uv;
+            vec3 pos = position;
+            float wave = 0.0;
+            wave += sin((pos.x * uFrequency) + (uTime * uSpeed)) * 0.6;
+            wave += cos((pos.y * uFrequency * 1.3) - (uTime * uSpeed * 0.9)) * 0.4;
+            wave += sin((pos.x + pos.y) * uFrequency * 0.4 + uTime * uSpeed * 1.7) * 0.2;
+            vWave = wave;
+            pos.z += wave * uWaveHeight;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vUv;
+          varying float vWave;
+          uniform vec3 uDeepColor;
+          uniform vec3 uShallowColor;
+          uniform vec3 uFoamColor;
+          void main() {
+            float waveStrength = smoothstep(-1.0, 1.0, vWave);
+            vec3 color = mix(uDeepColor, uShallowColor, waveStrength);
+            float foam = smoothstep(0.55, 0.92, vWave);
+            color = mix(color, uFoamColor, foam * 0.55);
+            float vignette = smoothstep(0.0, 0.75, distance(vUv, vec2(0.5)));
+            color *= mix(1.12, 0.82, vignette);
+            gl_FragColor = vec4(color, 0.96);
+          }
+        `,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+
+      const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+      ocean.rotation.x = -Math.PI / 2;
+      ocean.position.y = 0.6;
+      ocean.receiveShadow = true;
+      scene.add(ocean);
+
+      manager.onLoad = () => {
+        loadingOverlay.classList.add('hidden');
+        cameraTransitionStart = performance.now();
+        cameraTransitionActive = true;
+        controls.enabled = false;
+      };
+
+      return { oceanUniforms };
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animate(oceanUniforms) {
+      requestAnimationFrame(() => animate(oceanUniforms));
+      const elapsed = clock.getElapsedTime();
+
+      if (oceanUniforms) {
+        oceanUniforms.uTime.value = elapsed;
+      }
+
+      const now = performance.now();
+      if (cameraTransitionActive) {
+        const t = Math.min((now - cameraTransitionStart) / (cameraTransitionDuration * 1000), 1);
+        const eased = easeInOutCubic(t);
+
+        const startPos = new THREE.Vector3(0, 420, 0);
+        const targetPos = new THREE.Vector3(240, 180, 260);
+        const startTarget = new THREE.Vector3(0, 0, 0);
+        const finalTarget = new THREE.Vector3(30, 60, 0);
+
+        camera.position.lerpVectors(startPos, targetPos, eased);
+        controls.target.copy(startTarget).lerp(finalTarget, eased);
+        camera.lookAt(controls.target);
+
+        if (t >= 1) {
+          cameraTransitionActive = false;
+          controls.enabled = true;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function handleResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    window.addEventListener('resize', handleResize);
+
+    buildScene().then(({ oceanUniforms }) => {
+      animate(oceanUniforms);
+    }).catch((error) => {
+      console.error('Failed to initialize scene:', error);
+    });
+  </script>
+</body>
+</html>
