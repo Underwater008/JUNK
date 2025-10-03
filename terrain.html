@@ -44,6 +44,7 @@
             font-size: 12px;
             min-width: 200px;
             z-index: 10;
+            display: none;
         }
         #controls h3 {
             margin: 0 0 10px 0;
@@ -131,6 +132,8 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 
         let scene, camera, renderer, controls;
         let instancedMesh;
@@ -143,6 +146,20 @@
         let posXValueDisplay = null;
         let posYSlider = null;
         let posYValueDisplay = null;
+        // Mouse interaction
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let hoveredCubeIndex = -1;
+        let previousHoveredIndex = -1;
+        let selectedCubeIndex = -1;
+        let isOrbiting = false;
+        let orbitAngle = 0;
+        let cameraTransitioning = false;
+        let cameraTransitionProgress = 0;
+        let savedCameraPos = null;
+        let savedControlsTarget = null;
+        // Post-processing
+        let composer;
         // Material map data for land coloring
         let matImageData = null;
         let matW = 0;
@@ -176,11 +193,21 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
+            // Post-processing setup (no bloom)
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
             // Controls
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.maxPolarAngle = Math.PI / 2;
+
+            // Mouse events
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('click', onMouseClick);
+            window.addEventListener('resize', onWindowResize);
 
             // Lighting
             const ambientLight = new THREE.AmbientLight(0x222222);
@@ -197,8 +224,6 @@
             const pointLight2 = new THREE.PointLight(0xff00ff, 1.5, 200);
             pointLight2.position.set(-50, 40, 0);
             scene.add(pointLight2);
-
-            window.addEventListener('resize', onWindowResize);
 
             // Setup control panel
             setupControls();
@@ -560,8 +585,9 @@
             instancedMesh = new THREE.InstancedMesh(geometry, material, count);
             instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 
-            // Set up colors
+            // Set up colors and emissive colors
             const colors = [];
+            const emissiveColors = [];
             const oceanColor = new THREE.Color(0x1e3a5f);
             const landColor = new THREE.Color(0xffffff);
 
@@ -588,12 +614,7 @@
                 // Add color for this instance
                 colors.push(color.r, color.g, color.b);
 
-                // No jitter: ensure a tight grid with no gaps
-                const jitterAmount = 0.0;
-                const jitterX = (noise2D(x * 0.5, z * 0.3) - 0.5) * jitterAmount;
-                const jitterZ = (noise2D(x * 0.3, z * 0.5) - 0.5) * jitterAmount;
-
-                // Position with jitter
+                // Position
                 position.set(
                     x * gridGap - offsetX,
                     0,
@@ -603,7 +624,7 @@
                 matrix.compose(position, new THREE.Quaternion(), scale);
                 instancedMesh.setMatrixAt(idx, matrix);
 
-                // Store animation data with jittered position
+                // Store animation data
                 cubeData.push({
                     index: idx,
                     x: x * gridGap - offsetX,
@@ -619,7 +640,11 @@
                     isOcean: isOcean,
                     grayscale: grayscale,
                     gridX: x,
-                    gridZ: z
+                    gridZ: z,
+                    originalColor: color.clone(),
+                    isHovered: false,
+                    hoverProgress: 0,
+                    hoverElevation: 0
                 });
             });
 
@@ -844,10 +869,131 @@
             instancedMesh.instanceMatrix.needsUpdate = true;
         }
 
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function onMouseClick(event) {
+            if (cameraIntroPlaying) return; // Don't allow clicks during intro
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(instancedMesh);
+
+            // If something is already selected, any click deselects
+            if (selectedCubeIndex !== -1) {
+                deselectCube();
+                return;
+            }
+
+            // Nothing selected - allow new selection
+            if (intersects.length > 0) {
+                const clickedIndex = intersects[0].instanceId;
+                selectCube(clickedIndex);
+            }
+        }
+
+        function selectCube(index) {
+            if (index < 0 || index >= cubeData.length) return;
+
+            selectedCubeIndex = index;
+            const cube = cubeData[index];
+
+            // Save current camera state
+            if (!isOrbiting) {
+                savedCameraPos = camera.position.clone();
+                savedControlsTarget = controls.target.clone();
+            }
+
+            // Start transition to cube
+            cameraTransitioning = true;
+            cameraTransitionProgress = 0;
+            isOrbiting = true;
+            orbitAngle = 0;
+
+            // Disable controls during orbit
+            controls.enabled = false;
+        }
+
+        function deselectCube() {
+            if (selectedCubeIndex === -1) return;
+
+            selectedCubeIndex = -1;
+
+            // Transition back to saved position
+            if (savedCameraPos && savedControlsTarget) {
+                cameraTransitioning = true;
+                cameraTransitionProgress = 0;
+                isOrbiting = false;
+                // Controls will be re-enabled in updateCameraOrbit when transition completes
+            }
+        }
+
+        function updateCameraOrbit() {
+            // Handle transition back to normal
+            if (!isOrbiting && cameraTransitioning && savedCameraPos && savedControlsTarget) {
+                cameraTransitionProgress += 0.05;
+                if (cameraTransitionProgress >= 1) {
+                    cameraTransitionProgress = 1;
+                    cameraTransitioning = false;
+                    controls.enabled = true;
+                }
+
+                const eased = 1 - Math.pow(1 - cameraTransitionProgress, 3); // ease out
+                camera.position.lerpVectors(camera.position.clone(), savedCameraPos, eased * 0.2);
+                controls.target.lerpVectors(controls.target.clone(), savedControlsTarget, eased * 0.2);
+                camera.lookAt(controls.target);
+                return;
+            }
+
+            if (!isOrbiting || selectedCubeIndex === -1) return;
+
+            const cube = cubeData[selectedCubeIndex];
+            const cubeWorldPos = new THREE.Vector3(cube.x, cube.currentHeight + 2, cube.z);
+
+            // Camera orbit parameters
+            const orbitRadius = 15;
+            const orbitHeight = 15; // Height above the top of the cube
+            const orbitSpeed = 0.001; // Slower rotation
+
+            // Update orbit angle
+            orbitAngle += orbitSpeed;
+
+            // Calculate camera position
+            const targetCameraPos = new THREE.Vector3(
+                cubeWorldPos.x + Math.cos(orbitAngle) * orbitRadius,
+                cubeWorldPos.y + orbitHeight,
+                cubeWorldPos.z + Math.sin(orbitAngle) * orbitRadius
+            );
+
+            // Animate transition to orbit position
+            if (cameraTransitioning) {
+                cameraTransitionProgress += 0.05;
+                if (cameraTransitionProgress >= 1) {
+                    cameraTransitionProgress = 1;
+                    cameraTransitioning = false;
+                }
+
+                const eased = 1 - Math.pow(1 - cameraTransitionProgress, 3); // ease out
+                camera.position.lerpVectors(savedCameraPos, targetCameraPos, eased);
+                controls.target.lerpVectors(savedControlsTarget, cubeWorldPos, eased);
+            } else {
+                // Smooth orbit around cube
+                camera.position.copy(targetCameraPos);
+                controls.target.copy(cubeWorldPos);
+            }
+
+            camera.lookAt(controls.target);
+        }
+
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function updateCameraAnimation(delta) {
@@ -860,14 +1006,107 @@
             }
         }
 
+        function updateHover() {
+            if (!instancedMesh) return;
+
+            // Disable hovering when a cube is selected
+            if (selectedCubeIndex !== -1) {
+                // Clear any existing hover
+                if (hoveredCubeIndex !== -1) {
+                    if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
+                        cubeData[hoveredCubeIndex].isHovered = false;
+                    }
+                    hoveredCubeIndex = -1;
+                    previousHoveredIndex = -1;
+                }
+                return;
+            }
+
+            // Raycast to find intersected instance
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(instancedMesh);
+
+            if (intersects.length > 0) {
+                hoveredCubeIndex = intersects[0].instanceId;
+            } else {
+                hoveredCubeIndex = -1;
+            }
+
+            // Update hover states
+            if (previousHoveredIndex !== hoveredCubeIndex) {
+                // Mark previous as no longer hovered
+                if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
+                    cubeData[previousHoveredIndex].isHovered = false;
+                }
+                // Mark new as hovered
+                if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
+                    cubeData[hoveredCubeIndex].isHovered = true;
+                }
+                previousHoveredIndex = hoveredCubeIndex;
+            }
+
+            // Animate all cubes with hover transitions
+            const geometry = instancedMesh.geometry;
+            const colorAttr = geometry.getAttribute('color');
+            const matrix = new THREE.Matrix4();
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
+            const scale = new THREE.Vector3();
+            let needsUpdate = false;
+
+            cubeData.forEach(cube => {
+                // If this cube is selected, keep it elevated and white
+                const isSelected = cube.index === selectedCubeIndex;
+                const targetProgress = (cube.isHovered || isSelected) ? 1 : 0;
+
+                // Animate hover progress
+                if (cube.hoverProgress !== targetProgress) {
+                    const speed = 0.15; // Animation speed
+                    cube.hoverProgress += (targetProgress - cube.hoverProgress) * speed;
+
+                    // Clamp to target when very close
+                    if (Math.abs(cube.hoverProgress - targetProgress) < 0.01) {
+                        cube.hoverProgress = targetProgress;
+                    }
+
+                    // Update color (interpolate to white)
+                    const idx = cube.index * 3;
+                    const whiteColor = new THREE.Color(1, 1, 1);
+                    const currentColor = cube.originalColor.clone().lerp(whiteColor, cube.hoverProgress);
+                    colorAttr.array[idx + 0] = currentColor.r;
+                    colorAttr.array[idx + 1] = currentColor.g;
+                    colorAttr.array[idx + 2] = currentColor.b;
+
+                    // Update elevation
+                    cube.hoverElevation = cube.hoverProgress * 5; // 5 units elevation
+                    const totalHeight = cube.currentHeight + cube.hoverElevation;
+                    position.set(cube.x, totalHeight / 2, cube.z);
+                    scale.set(1, Math.max(0.01, totalHeight), 1);
+                    matrix.compose(position, quaternion, scale);
+                    instancedMesh.setMatrixAt(cube.index, matrix);
+
+                    needsUpdate = true;
+                }
+            });
+
+            if (needsUpdate) {
+                colorAttr.needsUpdate = true;
+                instancedMesh.instanceMatrix.needsUpdate = true;
+            }
+        }
+
         function animate() {
             requestAnimationFrame(animate);
 
             const delta = clock.getDelta();
 
-            controls.update();
+            if (!isOrbiting) {
+                controls.update();
+            }
             animateCubes();
             updateCameraAnimation(delta);
+            updateCameraOrbit();
+            updateHover();
 
             // Rotate lights
             const time = Date.now() * 0.0003;
@@ -879,7 +1118,7 @@
                 }
             });
 
-            renderer.render(scene, camera);
+            composer.render();
         }
 
         init();
