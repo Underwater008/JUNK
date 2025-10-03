@@ -5,78 +5,170 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Terrain Grid Visualization</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
         body {
             margin: 0;
             overflow: hidden;
-            background: #fff;
-            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eaf6 50%, #f3e5f5 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         canvas {
             display: block;
         }
         #info {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #0ff;
-            font-size: 14px;
-            text-shadow: 0 0 10px #0ff;
+            top: 30px;
+            left: 30px;
             z-index: 10;
+        }
+        #info img {
+            height: 40px;
+            display: block;
+            filter: brightness(0);
+            opacity: 0.9;
         }
         #loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #0ff;
-            font-size: 24px;
-            text-shadow: 0 0 20px #0ff;
+            color: #6b4ce6;
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: 1px;
             z-index: 5;
+        }
+        #color-picker {
+            position: absolute;
+            left: 30px;
+            bottom: 30px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            padding: 24px;
+            color: #1a1a1a;
+            font-size: 14px;
+            min-width: 260px;
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #color-picker.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        #color-picker h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .color-swatches {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+        .color-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 3px solid transparent;
+            position: relative;
+            box-sizing: border-box;
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .color-swatch.selected {
+            border-color: #1a1a1a;
+            transform: scale(1.05);
+        }
+        .color-swatch.original {
+            background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+            position: relative;
+        }
+        .color-swatch.original::after {
+            content: '↻';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #666;
         }
         #controls {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid #0ff;
-            padding: 15px;
-            color: #0ff;
-            font-size: 12px;
-            min-width: 200px;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            color: #1a1a1a;
+            font-size: 13px;
+            min-width: 220px;
             z-index: 10;
             display: none;
         }
         #controls h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
+            margin: 0 0 15px 0;
+            font-size: 15px;
+            font-weight: 600;
             text-align: center;
-            text-shadow: 0 0 10px #0ff;
+            color: #6b4ce6;
         }
         .control-group {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         .control-group label {
             display: block;
-            margin-bottom: 3px;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #4a4a4a;
         }
         .control-group input[type="range"] {
             width: 100%;
         }
         .control-group input[type="number"] {
-            width: 60px;
-            background: #000;
-            border: 1px solid #0ff;
-            color: #0ff;
-            padding: 2px;
+            width: 70px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            color: #1a1a1a;
+            padding: 4px 8px;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        TERRAIN GRID SYSTEM<br>
-        Mouse: Rotate | Scroll: Zoom
+        <img src="junk-logo.png" alt="JUNK">
     </div>
-    <div id="loading">INITIALIZING TERRAIN...</div>
+    <div id="loading">Loading...</div>
+
+    <div id="color-picker">
+        <h3>Customize Cube</h3>
+        <div class="color-swatches">
+            <div class="color-swatch original" data-color="original" title="Original"></div>
+            <div class="color-swatch" data-color="#5CCBD4" style="background: #5CCBD4;" title="Cyan"></div>
+            <div class="color-swatch" data-color="#C855D8" style="background: #C855D8;" title="Magenta"></div>
+            <div class="color-swatch" data-color="#4A8EC2" style="background: #4A8EC2;" title="Blue"></div>
+            <div class="color-swatch" data-color="#6B4CE6" style="background: #6B4CE6;" title="Purple"></div>
+            <div class="color-swatch" data-color="#F4C2C2" style="background: #F4C2C2;" title="Pink"></div>
+            <div class="color-swatch" data-color="#A64D79" style="background: #A64D79;" title="Burgundy"></div>
+            <div class="color-swatch" data-color="#5ABF8C" style="background: #5ABF8C;" title="Green"></div>
+            <div class="color-swatch" data-color="#F4D35E" style="background: #F4D35E;" title="Yellow"></div>
+        </div>
+    </div>
 
     <div id="controls">
         <h3>CAMERA CONTROLS</h3>
@@ -149,6 +241,8 @@
         // Mouse interaction
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
+        let mouseDownPos = new THREE.Vector2();
+        let isDragging = false;
         let hoveredCubeIndex = -1;
         let previousHoveredIndex = -1;
         let selectedCubeIndex = -1;
@@ -181,7 +275,7 @@
         function init() {
             // Scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff);
+            scene.background = new THREE.Color(0xf5f7fa);
 
             // Camera - start at high position for entrance animation
             camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -205,23 +299,25 @@
             controls.maxPolarAngle = Math.PI / 2;
 
             // Mouse events
+            window.addEventListener('mousedown', onMouseDown);
             window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
             window.addEventListener('click', onMouseClick);
             window.addEventListener('resize', onWindowResize);
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x222222);
+            // Lighting - soft and ambient for clean look
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
             directionalLight.position.set(50, 100, 50);
             scene.add(directionalLight);
 
-            const pointLight1 = new THREE.PointLight(0x00ffff, 1.5, 200);
+            const pointLight1 = new THREE.PointLight(0xb8a5ff, 0.8, 200);
             pointLight1.position.set(50, 40, 0);
             scene.add(pointLight1);
 
-            const pointLight2 = new THREE.PointLight(0xff00ff, 1.5, 200);
+            const pointLight2 = new THREE.PointLight(0xffc4e1, 0.8, 200);
             pointLight2.position.set(-50, 40, 0);
             scene.add(pointLight2);
 
@@ -588,7 +684,7 @@
             // Set up colors and emissive colors
             const colors = [];
             const emissiveColors = [];
-            const oceanColor = new THREE.Color(0x1e3a5f);
+            const oceanColor = new THREE.Color(0x006994); // Ocean blue
             const landColor = new THREE.Color(0xffffff);
 
             const matrix = new THREE.Matrix4();
@@ -643,8 +739,10 @@
                     gridZ: z,
                     originalColor: color.clone(),
                     isHovered: false,
+                    wasHovered: false,
                     hoverProgress: 0,
-                    hoverElevation: 0
+                    hoverElevation: 0,
+                    hoverElevationBonus: 0
                 });
             });
 
@@ -653,6 +751,9 @@
 
             instancedMesh.instanceMatrix.needsUpdate = true;
             scene.add(instancedMesh);
+
+            // Load saved custom colors
+            loadCustomColors();
         }
 
         function getAnimationDelay(x, z, width, height) {
@@ -802,7 +903,7 @@
 
             const geometry = instancedMesh.geometry;
             const colorAttr = geometry.getAttribute('color');
-            const oceanColor = new THREE.Color(0x1e3a5f);
+            const oceanColor = new THREE.Color(0x006994); // Ocean blue
             const matrix = new THREE.Matrix4();
             const position = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
@@ -869,13 +970,108 @@
             instancedMesh.instanceMatrix.needsUpdate = true;
         }
 
+        function onMouseDown(event) {
+            mouseDownPos.x = event.clientX;
+            mouseDownPos.y = event.clientY;
+            isDragging = false;
+        }
+
         function onMouseMove(event) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Check if mouse moved significantly from mousedown position
+            if (mouseDownPos.x !== undefined) {
+                const dx = event.clientX - mouseDownPos.x;
+                const dy = event.clientY - mouseDownPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 5) { // 5 pixel threshold
+                    isDragging = true;
+                }
+            }
+        }
+
+        function onMouseUp(event) {
+            // Reset after a short delay to allow click event to fire
+            setTimeout(() => {
+                isDragging = false;
+            }, 50);
+        }
+
+        function saveCustomColors() {
+            const customColors = {};
+            cubeData.forEach(cube => {
+                if (cube.customColor) {
+                    customColors[cube.index] = '#' + cube.customColor.getHexString();
+                }
+            });
+            localStorage.setItem('terrainCustomColors', JSON.stringify(customColors));
+        }
+
+        function loadCustomColors() {
+            const saved = localStorage.getItem('terrainCustomColors');
+            if (!saved) return;
+
+            try {
+                const customColors = JSON.parse(saved);
+                Object.keys(customColors).forEach(index => {
+                    const idx = parseInt(index);
+                    if (idx >= 0 && idx < cubeData.length) {
+                        cubeData[idx].customColor = new THREE.Color(customColors[index]);
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load custom colors:', e);
+            }
+        }
+
+        function setupColorSwatches() {
+            const swatches = document.querySelectorAll('.color-swatch');
+            const cube = cubeData[selectedCubeIndex];
+
+            // Remove previous listeners
+            swatches.forEach(swatch => {
+                const clone = swatch.cloneNode(true);
+                swatch.parentNode.replaceChild(clone, swatch);
+            });
+
+            // Re-query after cloning
+            const newSwatches = document.querySelectorAll('.color-swatch');
+
+            newSwatches.forEach(swatch => {
+                // Mark currently selected color
+                const swatchColor = swatch.getAttribute('data-color');
+                if (swatchColor === 'original' && !cube.customColor) {
+                    swatch.classList.add('selected');
+                } else if (cube.customColor && swatchColor === '#' + cube.customColor.getHexString()) {
+                    swatch.classList.add('selected');
+                }
+
+                // Add click listener
+                swatch.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent click from bubbling to window
+                    const color = swatch.getAttribute('data-color');
+
+                    // Remove selected from all swatches
+                    newSwatches.forEach(s => s.classList.remove('selected'));
+                    swatch.classList.add('selected');
+
+                    // Update cube's custom color (updateHover will apply it)
+                    if (color === 'original') {
+                        cube.customColor = null;
+                    } else {
+                        cube.customColor = new THREE.Color(color);
+                    }
+
+                    // Save to localStorage
+                    saveCustomColors();
+                });
+            });
         }
 
         function onMouseClick(event) {
             if (cameraIntroPlaying) return; // Don't allow clicks during intro
+            if (isDragging) return; // Don't allow selection if dragging
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -916,6 +1112,13 @@
 
             // Disable controls during orbit
             controls.enabled = false;
+
+            // Show color picker
+            const colorPicker = document.getElementById('color-picker');
+            colorPicker.classList.add('visible');
+
+            // Setup color swatches
+            setupColorSwatches();
         }
 
         function deselectCube() {
@@ -930,6 +1133,10 @@
                 isOrbiting = false;
                 // Controls will be re-enabled in updateCameraOrbit when transition completes
             }
+
+            // Hide color picker
+            const colorPicker = document.getElementById('color-picker');
+            colorPicker.classList.remove('visible');
         }
 
         function updateCameraOrbit() {
@@ -1009,9 +1216,32 @@
         function updateHover() {
             if (!instancedMesh) return;
 
-            // Disable hovering when a cube is selected
-            if (selectedCubeIndex !== -1) {
-                // Clear any existing hover
+            // Only do hover detection when no cube is selected
+            if (selectedCubeIndex === -1) {
+                // Raycast to find intersected instance
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(instancedMesh);
+
+                if (intersects.length > 0) {
+                    hoveredCubeIndex = intersects[0].instanceId;
+                } else {
+                    hoveredCubeIndex = -1;
+                }
+
+                // Update hover states
+                if (previousHoveredIndex !== hoveredCubeIndex) {
+                    // Mark previous as no longer hovered
+                    if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
+                        cubeData[previousHoveredIndex].isHovered = false;
+                    }
+                    // Mark new as hovered
+                    if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
+                        cubeData[hoveredCubeIndex].isHovered = true;
+                    }
+                    previousHoveredIndex = hoveredCubeIndex;
+                }
+            } else {
+                // Clear any existing hover when a cube is selected
                 if (hoveredCubeIndex !== -1) {
                     if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
                         cubeData[hoveredCubeIndex].isHovered = false;
@@ -1019,30 +1249,6 @@
                     hoveredCubeIndex = -1;
                     previousHoveredIndex = -1;
                 }
-                return;
-            }
-
-            // Raycast to find intersected instance
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(instancedMesh);
-
-            if (intersects.length > 0) {
-                hoveredCubeIndex = intersects[0].instanceId;
-            } else {
-                hoveredCubeIndex = -1;
-            }
-
-            // Update hover states
-            if (previousHoveredIndex !== hoveredCubeIndex) {
-                // Mark previous as no longer hovered
-                if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
-                    cubeData[previousHoveredIndex].isHovered = false;
-                }
-                // Mark new as hovered
-                if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
-                    cubeData[hoveredCubeIndex].isHovered = true;
-                }
-                previousHoveredIndex = hoveredCubeIndex;
             }
 
             // Animate all cubes with hover transitions
@@ -1057,10 +1263,15 @@
             cubeData.forEach(cube => {
                 // If this cube is selected, keep it elevated and white
                 const isSelected = cube.index === selectedCubeIndex;
-                const targetProgress = (cube.isHovered || isSelected) ? 1 : 0;
+                const hasCustomColor = cube.customColor !== null && cube.customColor !== undefined;
+                const targetProgress = (cube.isHovered || isSelected || hasCustomColor) ? 1 : 0;
 
                 // Animate hover progress
-                if (cube.hoverProgress !== targetProgress) {
+                const progressChanged = cube.hoverProgress !== targetProgress;
+                const hoverStateChanged = cube.wasHovered !== cube.isHovered;
+                cube.wasHovered = cube.isHovered;
+
+                if (progressChanged) {
                     const speed = 0.15; // Animation speed
                     cube.hoverProgress += (targetProgress - cube.hoverProgress) * speed;
 
@@ -1068,17 +1279,58 @@
                     if (Math.abs(cube.hoverProgress - targetProgress) < 0.01) {
                         cube.hoverProgress = targetProgress;
                     }
+                }
 
-                    // Update color (interpolate to white)
+                // Animate elevation bonus for colored cubes when hovering
+                const targetElevationBonus = (hasCustomColor && cube.isHovered && !isSelected) ? 3 : 0;
+                const bonusChanged = Math.abs(cube.hoverElevationBonus - targetElevationBonus) > 0.01;
+                if (bonusChanged) {
+                    const speed = 0.15;
+                    cube.hoverElevationBonus += (targetElevationBonus - cube.hoverElevationBonus) * speed;
+
+                    // Clamp to target when very close
+                    if (Math.abs(cube.hoverElevationBonus - targetElevationBonus) < 0.01) {
+                        cube.hoverElevationBonus = targetElevationBonus;
+                    }
+                }
+
+                // Update color if progress changed OR if this cube is selected OR if hover state changed OR bonus changed
+                if (progressChanged || isSelected || hasCustomColor || hoverStateChanged || bonusChanged) {
                     const idx = cube.index * 3;
-                    const whiteColor = new THREE.Color(1, 1, 1);
-                    const currentColor = cube.originalColor.clone().lerp(whiteColor, cube.hoverProgress);
-                    colorAttr.array[idx + 0] = currentColor.r;
-                    colorAttr.array[idx + 1] = currentColor.g;
-                    colorAttr.array[idx + 2] = currentColor.b;
 
-                    // Update elevation
-                    cube.hoverElevation = cube.hoverProgress * 5; // 5 units elevation
+                    // For selected cubes
+                    if (isSelected) {
+                        if (cube.customColor) {
+                            // Show custom color
+                            colorAttr.array[idx + 0] = cube.customColor.r;
+                            colorAttr.array[idx + 1] = cube.customColor.g;
+                            colorAttr.array[idx + 2] = cube.customColor.b;
+                        } else {
+                            // Show white for default/original color
+                            colorAttr.array[idx + 0] = 1;
+                            colorAttr.array[idx + 1] = 1;
+                            colorAttr.array[idx + 2] = 1;
+                        }
+                    } else if (hasCustomColor) {
+                        // For cubes with custom color, brighten when hovered (animated)
+                        const whiteColor = new THREE.Color(1, 1, 1);
+                        const brightenAmount = (cube.hoverElevationBonus / 3) * 0.3; // Smoothly animate 0 to 0.3
+                        const currentColor = cube.customColor.clone().lerp(whiteColor, brightenAmount);
+                        colorAttr.array[idx + 0] = currentColor.r;
+                        colorAttr.array[idx + 1] = currentColor.g;
+                        colorAttr.array[idx + 2] = currentColor.b;
+                    } else {
+                        // For hovered cubes, lerp to white
+                        const whiteColor = new THREE.Color(1, 1, 1);
+                        const baseColor = cube.originalColor;
+                        const currentColor = baseColor.clone().lerp(whiteColor, cube.hoverProgress);
+                        colorAttr.array[idx + 0] = currentColor.r;
+                        colorAttr.array[idx + 1] = currentColor.g;
+                        colorAttr.array[idx + 2] = currentColor.b;
+                    }
+
+                    // Update elevation with animated bonus
+                    cube.hoverElevation = cube.hoverProgress * 5 + cube.hoverElevationBonus;
                     const totalHeight = cube.currentHeight + cube.hoverElevation;
                     position.set(cube.x, totalHeight / 2, cube.z);
                     scale.set(1, Math.max(0.01, totalHeight), 1);
