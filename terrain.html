@@ -326,6 +326,11 @@
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
+        // JSONBin configuration
+        const JSONBIN_BIN_ID = '68e0256043b1c97be95965b9';
+        const JSONBIN_API_KEY = '$2a$10$sthMfijJiQYRT8JOQXWM.OCCPblyI4VMZ16sBjBUOOgXoex1AkW9.';
+        const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
         let scene, camera, renderer, controls, labelRenderer;
         let instancedMesh;
         let cubeData = [];
@@ -601,7 +606,7 @@
             Promise.all([
                 loadTexturePromise('TerrainFromWorldBuilder4.png'),
                 loadTexturePromise('Terrain/Islands_MaterialForBlender.jpg')
-            ]).then(([heightTex, materialTex]) => {
+            ]).then(async ([heightTex, materialTex]) => {
                 const h = getImageDataFromTexture(heightTex);
                 const m = getImageDataFromTexture(materialTex);
 
@@ -611,7 +616,7 @@
                 matH = m.height;
 
                 console.log('Creating terrain grid...');
-                createGridTerrain(h.data, h.width, h.height);
+                await createGridTerrain(h.data, h.width, h.height);
                 console.log('Terrain created, starting animation');
 
                 document.getElementById('loading').style.display = 'none';
@@ -656,7 +661,7 @@
             return [matImageData[i] / 255, matImageData[i + 1] / 255, matImageData[i + 2] / 255];
         }
 
-        function createGridTerrain(data, width, height) {
+        async function createGridTerrain(data, width, height) {
             const sampledWidth = Math.floor(width / sampleRate);
             const sampledHeight = Math.floor(height / sampleRate);
             const borderSize = 30; // Extra space for circular border
@@ -863,7 +868,10 @@
             scene.add(instancedMesh);
 
             // Load saved custom colors
-            loadCustomColors();
+            await loadCustomColors();
+
+            // Start auto-sync to get updates from other users
+            startAutoSync();
         }
 
         function getAnimationDelay(x, z, width, height) {
@@ -1108,7 +1116,7 @@
             }, 50);
         }
 
-        function saveCustomColors() {
+        async function saveCustomColors() {
             const customData = {};
             cubeData.forEach(cube => {
                 if (cube.customColor || cube.label || cube.icon) {
@@ -1119,15 +1127,42 @@
                     };
                 }
             });
-            localStorage.setItem('terrainCustomColors', JSON.stringify(customData));
-        }
-
-        function loadCustomColors() {
-            const saved = localStorage.getItem('terrainCustomColors');
-            if (!saved) return;
 
             try {
-                const customData = JSON.parse(saved);
+                const response = await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify({ cubes: customData })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to save to JSONBin:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error saving to JSONBin:', error);
+            }
+        }
+
+        async function loadCustomColors() {
+            try {
+                const response = await fetch(`${JSONBIN_URL}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': JSONBIN_API_KEY
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to load from JSONBin:', response.statusText);
+                    return;
+                }
+
+                const result = await response.json();
+                const customData = result.record?.cubes || {};
+
                 Object.keys(customData).forEach(index => {
                     const idx = parseInt(index);
                     if (idx >= 0 && idx < cubeData.length) {
@@ -1152,6 +1187,55 @@
             } catch (e) {
                 console.error('Failed to load custom colors:', e);
             }
+        }
+
+        function startAutoSync() {
+            // Poll for updates every 5 seconds
+            setInterval(async () => {
+                try {
+                    const response = await fetch(`${JSONBIN_URL}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY
+                        }
+                    });
+
+                    if (!response.ok) return;
+
+                    const result = await response.json();
+                    const customData = result.record?.cubes || {};
+
+                    // Update cubes that have changed
+                    Object.keys(customData).forEach(index => {
+                        const idx = parseInt(index);
+                        if (idx >= 0 && idx < cubeData.length) {
+                            const data = customData[index];
+                            const cube = cubeData[idx];
+
+                            // Check if this cube needs updating (skip if currently selected to avoid conflicts)
+                            if (cube.index === selectedCubeIndex) return;
+
+                            // Update color if changed
+                            const newColorHex = data.color;
+                            const currentColorHex = cube.customColor ? '#' + cube.customColor.getHexString() : null;
+                            if (newColorHex !== currentColorHex) {
+                                cube.customColor = newColorHex ? new THREE.Color(newColorHex) : null;
+                            }
+
+                            // Update label/icon if changed
+                            const newLabel = data.label || '';
+                            const newIcon = data.icon || '';
+                            if (cube.label !== newLabel || cube.icon !== newIcon) {
+                                cube.label = newLabel;
+                                cube.icon = newIcon;
+                                updateCubeLabel(cube, newLabel, newIcon);
+                            }
+                        }
+                    });
+                } catch (e) {
+                    // Silently fail - don't spam console with sync errors
+                }
+            }, 5000); // Sync every 5 seconds
         }
 
         function updateCubeLabel(cube, labelText, iconName) {
