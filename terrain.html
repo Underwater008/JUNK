@@ -356,6 +356,8 @@
         let cameraTransitionProgress = 0;
         let savedCameraPos = null;
         let savedControlsTarget = null;
+        // Mobile detection
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         // Post-processing
         let composer;
         // Material map data for land coloring
@@ -785,8 +787,10 @@
 
             // Create geometry and material
             const geometry = new THREE.BoxGeometry(cubeSize, 1, cubeSize);
-            const material = new THREE.MeshBasicMaterial({
-                vertexColors: true
+            const material = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                metalness: 0.1,
+                roughness: 0.8
             });
 
             // Create instanced mesh
@@ -1530,38 +1534,41 @@
         function updateHover() {
             if (!instancedMesh) return;
 
-            // Only do hover detection when no cube is selected
-            if (selectedCubeIndex === -1) {
-                // Raycast to find intersected instance
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObject(instancedMesh);
+            // Skip hover detection on mobile devices
+            if (!isMobile) {
+                // Only do hover detection when no cube is selected
+                if (selectedCubeIndex === -1) {
+                    // Raycast to find intersected instance
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObject(instancedMesh);
 
-                if (intersects.length > 0) {
-                    hoveredCubeIndex = intersects[0].instanceId;
+                    if (intersects.length > 0) {
+                        hoveredCubeIndex = intersects[0].instanceId;
+                    } else {
+                        hoveredCubeIndex = -1;
+                    }
+
+                    // Update hover states
+                    if (previousHoveredIndex !== hoveredCubeIndex) {
+                        // Mark previous as no longer hovered
+                        if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
+                            cubeData[previousHoveredIndex].isHovered = false;
+                        }
+                        // Mark new as hovered
+                        if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
+                            cubeData[hoveredCubeIndex].isHovered = true;
+                        }
+                        previousHoveredIndex = hoveredCubeIndex;
+                    }
                 } else {
-                    hoveredCubeIndex = -1;
-                }
-
-                // Update hover states
-                if (previousHoveredIndex !== hoveredCubeIndex) {
-                    // Mark previous as no longer hovered
-                    if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
-                        cubeData[previousHoveredIndex].isHovered = false;
+                    // Clear any existing hover when a cube is selected
+                    if (hoveredCubeIndex !== -1) {
+                        if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
+                            cubeData[hoveredCubeIndex].isHovered = false;
+                        }
+                        hoveredCubeIndex = -1;
+                        previousHoveredIndex = -1;
                     }
-                    // Mark new as hovered
-                    if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
-                        cubeData[hoveredCubeIndex].isHovered = true;
-                    }
-                    previousHoveredIndex = hoveredCubeIndex;
-                }
-            } else {
-                // Clear any existing hover when a cube is selected
-                if (hoveredCubeIndex !== -1) {
-                    if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
-                        cubeData[hoveredCubeIndex].isHovered = false;
-                    }
-                    hoveredCubeIndex = -1;
-                    previousHoveredIndex = -1;
                 }
             }
 
