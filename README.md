@@ -1,7 +1,7 @@
 JUNK
 ====
 
-This repository contains a 3D terrain grid visualization demo built with Three.js. Open `terrain.html` in a browser to view and tweak controls.
+This repository contains a 3D terrain grid visualization demo built with Three.js. Open `index.html` in a browser to view and tweak controls.
 
 - Ocean detection: grayscale threshold with flat sea height
 - Land colors: sampled from a material map (with rotation/flip controls)

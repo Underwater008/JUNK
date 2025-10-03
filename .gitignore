@@ -9,3 +9,7 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+
+# Large binaries not tracked in git
+*.blend
+*.tif
