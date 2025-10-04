@@ -1202,6 +1202,9 @@
         }
 
         async function saveCustomColors(cubeIndex = -1) {
+            // Set save time immediately to prevent auto-sync race condition
+            lastSaveTime = Date.now();
+
             try {
                 // First, fetch the latest data to merge with
                 let existingData = {};
@@ -1225,12 +1228,24 @@
                 // Merge our changes with existing data
                 const mergedData = { ...existingData };
                 cubeData.forEach(cube => {
-                    if (cube.customColor || cube.label || cube.icon) {
-                        mergedData[cube.index] = {
-                            color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
-                            label: cube.label || '',
-                            icon: cube.icon || ''
-                        };
+                    const hasData = cube.customColor || cube.label || cube.icon;
+                    const existsInBin = existingData[cube.index];
+
+                    if (hasData || existsInBin) {
+                        // Save if has data OR if it exists in bin (to update/clear it)
+                        if (hasData) {
+                            const savedData = {
+                                color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
+                                label: cube.label || '',
+                                icon: cube.icon || ''
+                            };
+                            console.log('Saving cube', cube.index, 'with data:', savedData);
+                            mergedData[cube.index] = savedData;
+                        } else {
+                            // Remove from bin if no data
+                            console.log('Deleting cube', cube.index, 'from bin (no custom data)');
+                            delete mergedData[cube.index];
+                        }
                     }
                 });
 
@@ -1254,7 +1269,6 @@
                 const saveResult = await response.json();
                 console.log('Save successful:', saveResult);
                 showNotification(true, 'Changes saved', cubeIndex);
-                lastSaveTime = Date.now();
                 return true;
             } catch (error) {
                 console.error('Error saving to JSONBin:', error);
@@ -1327,6 +1341,21 @@
                     const result = await response.json();
                     const customData = result.record?.cubes || {};
 
+                    // First, clear any cubes that were deleted from the bin
+                    cubeData.forEach((cube, idx) => {
+                        // Skip if currently selected to avoid conflicts
+                        if (cube.index === selectedCubeIndex) return;
+
+                        // If cube has custom data locally but not in bin, clear it
+                        if ((cube.customColor || cube.label || cube.icon) && !customData[idx]) {
+                            console.log('Auto-sync: Clearing cube', idx, 'as it was deleted from bin');
+                            cube.customColor = null;
+                            cube.label = '';
+                            cube.icon = '';
+                            updateCubeLabel(cube, '', '');
+                        }
+                    });
+
                     // Update cubes that have changed
                     Object.keys(customData).forEach(index => {
                         const idx = parseInt(index);
@@ -1341,6 +1370,7 @@
                             const newColorHex = data.color;
                             const currentColorHex = cube.customColor ? '#' + cube.customColor.getHexString() : null;
                             if (newColorHex !== currentColorHex) {
+                                console.log('Auto-sync: Updating cube', idx, 'color from', currentColorHex, 'to', newColorHex);
                                 cube.customColor = newColorHex ? new THREE.Color(newColorHex) : null;
                             }
 
