@@ -174,6 +174,41 @@
             font-size: 24px;
             color: #666;
         }
+        #notification {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            padding: 12px 20px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        #notification.visible {
+            opacity: 1;
+        }
+        #notification .icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+        #notification.success .icon {
+            color: #4caf50;
+        }
+        #notification.error .icon {
+            color: #f44336;
+        }
+        #notification .message {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1a1a1a;
+        }
         #controls {
             position: absolute;
             top: 30px;
@@ -268,6 +303,11 @@
         </div>
     </div>
 
+    <div id="notification">
+        <div class="icon">✓</div>
+        <div class="message">Saved successfully!</div>
+    </div>
+
     <div id="controls">
         <h3>CAMERA CONTROLS</h3>
         <div class="control-group">
@@ -356,6 +396,9 @@
         let cameraTransitionProgress = 0;
         let savedCameraPos = null;
         let savedControlsTarget = null;
+        let cubeEditChanged = false;
+        let initialCubeState = null;
+        let lastSaveTime = 0;
         // Mobile detection
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         // Post-processing
@@ -1089,6 +1132,15 @@
             mouseDownPos.x = event.clientX;
             mouseDownPos.y = event.clientY;
             isDragging = false;
+
+            // Stop camera intro animation if user clicks/drags
+            if (cameraIntroPlaying) {
+                if (cameraAction) {
+                    cameraAction.stop();
+                }
+                cameraIntroPlaying = false;
+                controls.enabled = true;
+            }
         }
 
         function onMouseMove(event) {
@@ -1096,7 +1148,7 @@
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
             // Check if mouse moved significantly from mousedown position
-            if (mouseDownPos.x !== undefined) {
+            if (mouseDownPos.x !== undefined && mouseDownPos.y !== undefined) {
                 const dx = event.clientX - mouseDownPos.x;
                 const dy = event.clientY - mouseDownPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1107,39 +1159,107 @@
         }
 
         function onMouseUp(event) {
+            // Reset mousedown position
+            mouseDownPos.x = undefined;
+            mouseDownPos.y = undefined;
+
             // Reset after a short delay to allow click event to fire
             setTimeout(() => {
                 isDragging = false;
             }, 50);
         }
 
-        async function saveCustomColors() {
-            const customData = {};
-            cubeData.forEach(cube => {
-                if (cube.customColor || cube.label || cube.icon) {
-                    customData[cube.index] = {
-                        color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
-                        label: cube.label || '',
-                        icon: cube.icon || ''
-                    };
-                }
-            });
+        function showNotification(success, message, cubeIndex = -1) {
+            const notification = document.getElementById('notification');
+            const icon = notification.querySelector('.icon');
+            const messageEl = notification.querySelector('.message');
 
+            // Update content
+            icon.textContent = success ? '✓' : '✕';
+            messageEl.textContent = message;
+
+            // Position above the cube if index provided
+            if (cubeIndex >= 0 && cubeIndex < cubeData.length) {
+                const cube = cubeData[cubeIndex];
+                const worldPos = new THREE.Vector3(cube.x, cube.currentHeight + 10, cube.z);
+                const screenPos = worldPos.project(camera);
+
+                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+
+                notification.style.left = `${x}px`;
+                notification.style.top = `${y - 20}px`; // Offset for animation
+                notification.style.transform = 'translate(-50%, -100%)';
+            }
+
+            // Update styling and show
+            notification.className = success ? 'success visible' : 'error visible';
+
+            // Auto-hide after 2 seconds
+            setTimeout(() => {
+                notification.classList.remove('visible');
+            }, 2000);
+        }
+
+        async function saveCustomColors(cubeIndex = -1) {
             try {
+                // First, fetch the latest data to merge with
+                let existingData = {};
+                try {
+                    const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY
+                        }
+                    });
+
+                    if (getResponse.ok) {
+                        const result = await getResponse.json();
+                        existingData = result.record?.cubes || {};
+                        console.log('Fetched existing data, cubes:', Object.keys(existingData).length);
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch existing data, will overwrite:', e);
+                }
+
+                // Merge our changes with existing data
+                const mergedData = { ...existingData };
+                cubeData.forEach(cube => {
+                    if (cube.customColor || cube.label || cube.icon) {
+                        mergedData[cube.index] = {
+                            color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
+                            label: cube.label || '',
+                            icon: cube.icon || ''
+                        };
+                    }
+                });
+
+                console.log('Saving to JSONBin, total cubes:', Object.keys(mergedData).length);
                 const response = await fetch(JSONBIN_URL, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': JSONBIN_API_KEY
                     },
-                    body: JSON.stringify({ cubes: customData })
+                    body: JSON.stringify({ cubes: mergedData })
                 });
 
                 if (!response.ok) {
-                    console.error('Failed to save to JSONBin:', response.statusText);
+                    const errorText = await response.text();
+                    console.error('Failed to save to JSONBin:', response.status, response.statusText, errorText);
+                    showNotification(false, 'Changes not saved', cubeIndex);
+                    return false;
                 }
+
+                const saveResult = await response.json();
+                console.log('Save successful:', saveResult);
+                showNotification(true, 'Changes saved', cubeIndex);
+                lastSaveTime = Date.now();
+                return true;
             } catch (error) {
                 console.error('Error saving to JSONBin:', error);
+                showNotification(false, 'Changes not saved', cubeIndex);
+                return false;
             }
         }
 
@@ -1189,6 +1309,11 @@
         function startAutoSync() {
             // Poll for updates every 5 seconds
             setInterval(async () => {
+                // Skip if we just saved (avoid overwriting our own changes)
+                if (Date.now() - lastSaveTime < 10000) {
+                    return;
+                }
+
                 try {
                     const response = await fetch(`${JSONBIN_URL}/latest`, {
                         method: 'GET',
@@ -1273,8 +1398,6 @@
 
                 cube.labelObject = label;
             }
-
-            saveCustomColors();
         }
 
         function setupColorSwatches() {
@@ -1372,9 +1495,6 @@
                     } else {
                         cube.customColor = new THREE.Color(color);
                     }
-
-                    // Save to localStorage
-                    saveCustomColors();
                 });
             });
         }
@@ -1408,6 +1528,14 @@
             selectedCubeIndex = index;
             const cube = cubeData[index];
 
+            // Save initial state for change detection
+            cubeEditChanged = false;
+            initialCubeState = {
+                color: cube.customColor ? cube.customColor.clone() : null,
+                label: cube.label || '',
+                icon: cube.icon || ''
+            };
+
             // Save current camera state
             if (!isOrbiting) {
                 savedCameraPos = camera.position.clone();
@@ -1434,7 +1562,18 @@
         function deselectCube() {
             if (selectedCubeIndex === -1) return;
 
+            const cubeIndex = selectedCubeIndex;
+            const cube = cubeData[cubeIndex];
+
+            // Check if anything changed
+            const hasChanges = checkIfCubeChanged(cube);
+
             selectedCubeIndex = -1;
+
+            // Only save if changes were made
+            if (hasChanges) {
+                saveCustomColors(cubeIndex);
+            }
 
             // Transition back to saved position
             if (savedCameraPos && savedControlsTarget) {
@@ -1447,6 +1586,17 @@
             // Hide color picker
             const colorPicker = document.getElementById('color-picker');
             colorPicker.classList.remove('visible');
+        }
+
+        function checkIfCubeChanged(cube) {
+            if (!initialCubeState) return false;
+
+            const currentColor = cube.customColor ? cube.customColor.getHexString() : null;
+            const initialColor = initialCubeState.color ? initialCubeState.color.getHexString() : null;
+
+            return currentColor !== initialColor ||
+                   cube.label !== initialCubeState.label ||
+                   cube.icon !== initialCubeState.icon;
         }
 
         function updateCameraOrbit() {
