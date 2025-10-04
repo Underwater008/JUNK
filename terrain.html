@@ -42,8 +42,6 @@
         }
         #color-picker {
             position: absolute;
-            left: 30px;
-            bottom: 30px;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
             border-radius: 16px;
@@ -1608,6 +1606,16 @@
 
             // Show color picker
             const colorPicker = document.getElementById('color-picker');
+
+            // Fixed position: right side, vertically centered
+            const pickerWidth = 300;
+            const margin = 30;
+
+            colorPicker.style.right = `${margin}px`;
+            colorPicker.style.left = 'auto';
+            colorPicker.style.top = '50%';
+            colorPicker.style.transform = 'translateY(-50%)';
+
             colorPicker.classList.add('visible');
 
             // Setup color swatches
