@@ -327,13 +327,13 @@
             <input type="range" id="pos-z" min="-200" max="200" value="80" step="1">
         </div>
         <div class="control-group">
-            <label>Height Scale: <span id="height-value">15</span></label>
-            <input type="range" id="height-scale" min="5" max="100" value="15" step="1">
+            <label>Height Scale: <span id="height-value">7</span></label>
+            <input type="range" id="height-scale" min="5" max="100" value="7" step="1">
         </div>
         <div class="control-group">
-            <label>Sea Threshold: <span id="sea-threshold-value">0.078</span></label>
-            <input type="range" id="sea-threshold" min="0" max="0.5" value="0.078" step="0.01">
-            <input type="number" id="sea-threshold-input" min="0" max="0.5" value="0.078" step="0.001">
+            <label>Sea Threshold: <span id="sea-threshold-value">0.07</span></label>
+            <input type="range" id="sea-threshold" min="0" max="0.5" value="0.07" step="0.01">
+            <input type="number" id="sea-threshold-input" min="0" max="0.5" value="0.07" step="0.001">
         </div>
         <div class="control-group">
             <label>Sea Level Height: <span id="sea-height-value">1.00</span></label>
@@ -411,11 +411,11 @@
         let flipMaterialV = true;  // vertical flip (image origin alignment)
         let matRotationDeg = 180; // rotation around material center (default sweet spot)
         const clock = new THREE.Clock();
-        let heightScale = 15;
+        let heightScale = 7;
         const gridGap = 1.0;
         const cubeSize = 1.0;
         const sampleRate = 4; // Sample every Nth pixel (128x128 = 16k instances)
-        let seaThreshold = 0.078; // Grayscale cutoff: <= is ocean (default sweet spot)
+        let seaThreshold = 0.07; // Grayscale cutoff: <= is ocean (default sweet spot)
         let seaFlatHeight = 1.0; // Flat column height for ocean
 
         const cameraStartPos = { x: 80, y: 260, z: 80 };
