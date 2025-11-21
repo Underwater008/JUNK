@@ -654,7 +654,12 @@
 
         function loadTexturePromise(url) {
             return new Promise((resolve, reject) => {
-                new THREE.TextureLoader().load(url, resolve, undefined, reject);
+                new THREE.TextureLoader().load(url, (texture) => {
+                    // Use linear filtering for smooth, non-pixelated textures
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+                    resolve(texture);
+                }, undefined, reject);
             });
         }
 
@@ -671,9 +676,10 @@
 
         function loadHeightmap() {
             console.log('Loading maps...');
+            const cacheBuster = '?t=' + Date.now();
             Promise.all([
-                loadTexturePromise('TerrainFromWorldBuilder4.png'),
-                loadTexturePromise('Terrain/Islands_MaterialForBlender.jpg')
+                loadTexturePromise('TerrainFromWorldBuilder4.png' + cacheBuster),
+                loadTexturePromise('Terrain/Islands_MaterialForBlender.jpg' + cacheBuster)
             ]).then(async ([heightTex, materialTex]) => {
                 const h = getImageDataFromTexture(heightTex);
                 const m = getImageDataFromTexture(materialTex);
@@ -684,7 +690,7 @@
                 matH = m.height;
 
                 console.log('Creating terrain grid...');
-                await createGridTerrain(h.data, h.width, h.height);
+                await createGridTerrain(h.data, h.width, h.height, materialTex);
                 console.log('Terrain created, starting animation');
 
                 document.getElementById('loading').style.display = 'none';
@@ -729,206 +735,54 @@
             return [matImageData[i] / 255, matImageData[i + 1] / 255, matImageData[i + 2] / 255];
         }
 
-        async function createGridTerrain(data, width, height) {
-            const sampledWidth = Math.floor(width / sampleRate);
-            const sampledHeight = Math.floor(height / sampleRate);
-            const borderSize = 30; // Extra space for circular border
-            const extendedWidth = sampledWidth + borderSize * 2;
-            const extendedHeight = sampledHeight + borderSize * 2;
+        async function createGridTerrain(data, width, height, materialTex) {
+            const segments = Math.min(width, height) / sampleRate;
 
-            // Center the extended grid
-            const offsetX = (extendedWidth * gridGap) / 2;
-            const offsetZ = (extendedHeight * gridGap) / 2;
+            // Create plane geometry with segments matching the texture resolution
+            const geometry = new THREE.PlaneGeometry(128, 128, segments - 1, segments - 1);
 
-            const centerX = extendedWidth / 2;
-            const centerZ = extendedHeight / 2;
-            const baseRadius = Math.min(sampledWidth, sampledHeight) / 2 + 15; // Circular boundary
-            const maxDist = baseRadius + 20;
-
-            // First pass: count valid cubes and collect their data
-            const cubeInfo = [];
-            const heightMap = new Map(); // Store sampled data by position
-
-            // Ocean defined using grayscale threshold from heightmap
-
-            for (let z = 0; z < extendedHeight; z++) {
-                for (let x = 0; x < extendedWidth; x++) {
-                    // Distance from center
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
-                    const distFromCenter = Math.sqrt(dx * dx + dz * dz);
-
-                    // Add noise to radius for irregular edge
-                    const angle = Math.atan2(dz, dx);
-                    const noiseVal = noise2D(Math.cos(angle) * 0.5, Math.sin(angle) * 0.5);
-                    const secondNoise = noise2D(x * 0.1, z * 0.1);
-                    const noisyRadius = baseRadius + noiseVal * 15 + secondNoise * 8;
-
-                    // Skip cubes outside the noisy circular boundary
-                    if (distFromCenter > noisyRadius) continue;
-
-                    // Check if this position is within the heightmap
-                    const isInHeightmap = x >= borderSize && x < sampledWidth + borderSize &&
-                                         z >= borderSize && z < sampledHeight + borderSize;
-
-                    let grayscale = 0;
-                    let targetHeight = 0.5;
-                    let isOcean = false;
-
-                    if (isInHeightmap) {
-                        const dataX = (x - borderSize) * sampleRate;
-                        const dataZ = (z - borderSize) * sampleRate;
-                        const index = (dataZ * width + dataX) * 4;
-                        grayscale = data[index] / 255;
-                        isOcean = grayscale <= seaThreshold;
-                        targetHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
-                    } else {
-                        // Border area - blend with nearest heightmap edge
-                        const blendDistance = 10; // Pixels over which to blend
-
-                        // Find nearest point on heightmap edge
-                        let nearestX = Math.max(borderSize, Math.min(x, sampledWidth + borderSize - 1));
-                        let nearestZ = Math.max(borderSize, Math.min(z, sampledHeight + borderSize - 1));
-
-                        // Distance from heightmap edge
-                        let distToEdge = Math.min(
-                            Math.abs(x - borderSize),
-                            Math.abs(x - (sampledWidth + borderSize - 1)),
-                            Math.abs(z - borderSize),
-                            Math.abs(z - (sampledHeight + borderSize - 1))
-                        );
-
-                        if (x < borderSize || x >= sampledWidth + borderSize ||
-                            z < borderSize || z >= sampledHeight + borderSize) {
-                            distToEdge = Math.sqrt(
-                                Math.pow(Math.max(0, borderSize - x, x - (sampledWidth + borderSize - 1)), 2) +
-                                Math.pow(Math.max(0, borderSize - z, z - (sampledHeight + borderSize - 1)), 2)
-                            );
-                        }
-
-                        // Sample from nearest edge pixel
-                        const edgeDataX = (nearestX - borderSize) * sampleRate;
-                        const edgeDataZ = (nearestZ - borderSize) * sampleRate;
-                        const edgeIndex = (edgeDataZ * width + edgeDataX) * 4;
-                        const edgeGrayscale = data[edgeIndex] / 255;
-
-                        // Blend between edge value and ocean
-                        const blendFactor = Math.min(distToEdge / blendDistance, 1);
-                        grayscale = edgeGrayscale * (1 - blendFactor) + 0.05 * blendFactor;
-                        isOcean = grayscale <= seaThreshold;
-                        targetHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
-                    }
-
-                    heightMap.set(`${x},${z}`, { grayscale, isOcean });
-                    cubeInfo.push({ x, z, grayscale, targetHeight, distFromCenter, isOcean });
-                }
-            }
-
-            // Ocean/land already classified from grayscale threshold above
-
-            // Second pass: detect shore areas (ocean near land)
-            cubeInfo.forEach(cube => {
-                if (cube.isOcean) { // Ocean cube (black/very dark)
-                    // Check neighbors for land
-                    let hasLandNearby = false;
-                    for (let dz = -2; dz <= 2; dz++) {
-                        for (let dx = -2; dx <= 2; dx++) {
-                            if (dx === 0 && dz === 0) continue;
-                            const neighbor = heightMap.get(`${cube.x + dx},${cube.z + dz}`);
-                            if (neighbor !== undefined && !neighbor.isOcean) {
-                                hasLandNearby = true;
-                                break;
-                            }
-                        }
-                        if (hasLandNearby) break;
-                    }
-                    cube.isNearShore = hasLandNearby;
-                } else {
-                    cube.isNearShore = false;
-                }
+            // Apply the material texture directly
+            const material = new THREE.MeshBasicMaterial({
+                map: materialTex,
+                side: THREE.DoubleSide
             });
 
-            const count = cubeInfo.length;
-            console.log(`Creating ${count} instanced cubes with circular noisy edge (grid: ${extendedWidth}x${extendedHeight})`);
+            // Get position attribute to modify heights
+            const positions = geometry.attributes.position;
 
-            // Create geometry and material
-            const geometry = new THREE.BoxGeometry(cubeSize, 1, cubeSize);
-            const material = new THREE.MeshBasicMaterial();
+            // Modify vertex heights based on heightmap
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const z = positions.getY(i); // In PlaneGeometry, Y is the vertical axis
 
-            // Create instanced mesh
-            instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-            instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                // Convert world position to texture coordinates
+                const u = (x + 64) / 128; // 0 to 1
+                const v = (z + 64) / 128; // 0 to 1
 
-            const oceanColor = new THREE.Color(0x006994); // Ocean blue
+                // Sample heightmap
+                const dataX = Math.floor(u * width);
+                const dataZ = Math.floor(v * height);
+                const index = (dataZ * width + dataX) * 4;
+                const grayscale = data[index] / 255;
 
-            const matrix = new THREE.Matrix4();
-            const position = new THREE.Vector3();
-            const scale = new THREE.Vector3(1, 0.01, 1);
+                // Calculate vertex height
+                const isOcean = grayscale <= seaThreshold;
+                const vertexHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
 
-            // Third pass: create instances from valid cubes
-            cubeInfo.forEach((cube, idx) => {
-                const { x, z, grayscale, targetHeight, distFromCenter, isNearShore, isOcean } = cube;
-
-                // Compute UV into material map anchored to heightmap area
-                const u = Math.max(0, Math.min(1, (x - borderSize) / sampledWidth));
-                const v = Math.max(0, Math.min(1, (z - borderSize) / sampledHeight));
-
-                // Color: ocean fixed blue; land uses material map color
-                let color;
-                if (isOcean) {
-                    color = oceanColor;
-                } else {
-                    const [r, g, b] = sampleMaterialColor(u, v);
-                    color = new THREE.Color().setRGB(r, g, b);
-                }
-
-                // Set color for this instance using proper instanced mesh API
-                instancedMesh.setColorAt(idx, color);
-
-                // Position
-                position.set(
-                    x * gridGap - offsetX,
-                    0,
-                    z * gridGap - offsetZ
-                );
-
-                matrix.compose(position, new THREE.Quaternion(), scale);
-                instancedMesh.setMatrixAt(idx, matrix);
-
-                // Store animation data
-                cubeData.push({
-                    index: idx,
-                    x: x * gridGap - offsetX,
-                    z: z * gridGap - offsetZ,
-                    targetHeight: targetHeight,
-                    baseHeight: grayscale * heightScale + 0.5,
-                    u: u,
-                    v: v,
-                    currentHeight: 0,
-                    delay: getAnimationDelay(x, z, sampledWidth, sampledHeight),
-                    animated: false,
-                    isNearShore: isNearShore,
-                    isOcean: isOcean,
-                    grayscale: grayscale,
-                    gridX: x,
-                    gridZ: z,
-                    originalColor: color.clone(),
-                    isHovered: false,
-                    wasHovered: false,
-                    hoverProgress: 0,
-                    hoverElevation: 0,
-                    hoverElevationBonus: 0,
-                    label: '',
-                    icon: '',
-                    labelObject: null
-                });
-            });
-
-            instancedMesh.instanceMatrix.needsUpdate = true;
-            if (instancedMesh.instanceColor) {
-                instancedMesh.instanceColor.needsUpdate = true;
+                // Set Z position (height in plane geometry)
+                positions.setZ(i, vertexHeight);
             }
+
+            positions.needsUpdate = true;
+            geometry.computeVertexNormals(); // Recalculate normals for proper lighting
+
+            // Create mesh
+            instancedMesh = new THREE.Mesh(geometry, material);
+            instancedMesh.rotation.x = -Math.PI / 2; // Rotate to lay flat
             scene.add(instancedMesh);
+
+            // Initialize empty cubeData for compatibility
+            cubeData = [];
 
             // Load saved custom colors
             await loadCustomColors();
@@ -1559,19 +1413,10 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(instancedMesh);
-
-            // If something is already selected, any click deselects
+            // Clicking anywhere now just deselects (no cube selection in plane mode)
             if (selectedCubeIndex !== -1) {
                 deselectCube();
                 return;
-            }
-
-            // Nothing selected - allow new selection
-            if (intersects.length > 0) {
-                const clickedIndex = intersects[0].instanceId;
-                selectCube(clickedIndex);
             }
         }
 
@@ -1738,47 +1583,10 @@
         }
 
         function updateHover() {
-            if (!instancedMesh) return;
+            // Hover and cube interaction disabled in plane mode
+            if (cubeData.length === 0) return;
 
-            // Skip hover detection on mobile devices
-            if (!isMobile) {
-                // Only do hover detection when no cube is selected
-                if (selectedCubeIndex === -1) {
-                    // Raycast to find intersected instance
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObject(instancedMesh);
-
-                    if (intersects.length > 0) {
-                        hoveredCubeIndex = intersects[0].instanceId;
-                    } else {
-                        hoveredCubeIndex = -1;
-                    }
-
-                    // Update hover states
-                    if (previousHoveredIndex !== hoveredCubeIndex) {
-                        // Mark previous as no longer hovered
-                        if (previousHoveredIndex >= 0 && previousHoveredIndex < cubeData.length) {
-                            cubeData[previousHoveredIndex].isHovered = false;
-                        }
-                        // Mark new as hovered
-                        if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
-                            cubeData[hoveredCubeIndex].isHovered = true;
-                        }
-                        previousHoveredIndex = hoveredCubeIndex;
-                    }
-                } else {
-                    // Clear any existing hover when a cube is selected
-                    if (hoveredCubeIndex !== -1) {
-                        if (hoveredCubeIndex >= 0 && hoveredCubeIndex < cubeData.length) {
-                            cubeData[hoveredCubeIndex].isHovered = false;
-                        }
-                        hoveredCubeIndex = -1;
-                        previousHoveredIndex = -1;
-                    }
-                }
-            }
-
-            // Animate all cubes with hover transitions
+            // Still animate cubes if they exist (for backwards compatibility)
             const matrix = new THREE.Matrix4();
             const position = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
