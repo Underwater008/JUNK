@@ -531,17 +531,17 @@
                 const result = await response.json();
                 const data = result.record;
 
-                if (data && data.artifacts && Array.isArray(data.artifacts)) {
+                if (data && data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0) {
                     artifacts = data.artifacts;
                     console.log('Loaded artifacts from JSONBin:', artifacts.length);
                 } else {
-                    console.log('No data in bin, using defaults');
+                    console.log('Bin is empty, initializing with defaults');
                     artifacts = JSON.parse(JSON.stringify(defaultArtifacts));
                     // Initialize bin with default data
                     await saveDataToJSONBin();
                 }
 
-                if (data && data.history) {
+                if (data && data.history && Array.isArray(data.history)) {
                     historyLog = data.history;
                 }
             } catch (e) {
@@ -582,6 +582,8 @@
                     lastModified: new Date().toISOString()
                 };
 
+                console.log('Attempting to save to JSONBin...', dataToSave);
+
                 const response = await fetch(JSONBIN_URL, {
                     method: 'PUT',
                     headers: {
@@ -591,17 +593,21 @@
                     body: JSON.stringify(dataToSave)
                 });
 
+                console.log('JSONBin response status:', response.status);
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('Failed to save to JSONBin:', response.status, errorText);
-                    showSaveNotification(false, `Error ${response.status}: ${errorText.substring(0, 50)}`);
+                    showSaveNotification(false, `Error ${response.status}`);
                 } else {
-                    console.log('Saved to JSONBin successfully');
+                    const saveResult = await response.json();
+                    console.log('Saved to JSONBin successfully:', saveResult);
                     showSaveNotification(true);
                 }
             } catch (error) {
                 console.error('Error saving to JSONBin:', error);
-                showSaveNotification(false);
+                console.error('Error details:', error.message, error.stack);
+                showSaveNotification(false, `Error: ${error.message}`);
             } finally {
                 saveInProgress = false;
             }
