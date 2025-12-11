@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JUNK // Museum of the End</title>
+    <style>
+        /* --- 1. SETUP & VARIABLES --- */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Courier+Prime:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
+        :root {
+            /* Palette: Dark but letting background shine */
+            --bg-dark: #080808;
+            --bg-panel: rgba(12, 12, 14, 0.9); /* More opaque panel for readability */
+            --text-main: #e8e8e0;
+            --text-muted: #a0a09a;
+            
+            /* Accents */
+            --gold: #d4af37; 
+            --gold-dim: rgba(212, 175, 55, 0.3);
+            --rust: #8a6a5c;
+            --terminal-glow: rgba(212, 175, 55, 0.2);
+
+            /* Typography */
+            --font-display: 'Cinzel', serif;
+            --font-ui: 'Inter', sans-serif;
+            --font-mono: 'Courier Prime', monospace;
+
+            --ease-cinematic: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 2. BACKGROUND LAYERS (High Visibility) --- */
+        .bg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            pointer-events: none;
+        }
+
+        #bg-image {
+            background-image: url('Archive_Hall.png');
+            /* Fallback if local file missing */
+            background-image: url('Archive_Hall.png'), url('https://images.unsplash.com/photo-1518066000714-58c45f1a2c0a?q=80&w=2000&auto=format&fit=crop');
+            
+            background-size: cover;
+            background-position: center center;
+            
+            /* UPDATED FOR CLARITY: */
+            opacity: 1; 
+            /* Minimal filtering to preserve details and green tones */
+            filter: brightness(0.65) contrast(1.1) saturation(0.8);
+            
+            transform: scale(1.02);
+            transition: transform 0.2s ease-out; /* For parallax */
+        }
+
+        /* Subtle Film Grain */
+        .noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.1; /* Reduced noise */
+            mix-blend-mode: overlay;
+        }
+
+        /* Reduced Grime - clearer view */
+        .grime {
+            background: radial-gradient(transparent 40%, rgba(0, 0, 0, 0.3) 100%),
+                        url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.1'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z'/%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.2; /* Much lower opacity */
+            mix-blend-mode: multiply;
+            z-index: 1;
+        }
+
+        /* Open Vignette - only dark corners */
+        .vignette {
+            background: radial-gradient(circle at 50% 55%, transparent 40%, rgba(0,0,0,0.5) 80%, rgba(0,0,0,0.9) 100%);
+            z-index: 2;
+        }
+
+        /* --- 3. NAVIGATION --- */
+        header {
+            position: absolute; top: 0; width: 100%; height: 80px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: var(--text-main);
+            letter-spacing: 5px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .nav-links { display: flex; gap: 30px; }
+        .nav-item {
+            font-family: var(--font-ui); font-size: 0.7rem; color: #ccc;
+            text-transform: uppercase; letter-spacing: 2px; text-decoration: none;
+            transition: color 0.3s; cursor: pointer;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+        }
+        .nav-item:hover { color: var(--gold); }
+        .nav-item.active { color: var(--gold); border-bottom: 1px solid var(--gold); }
+
+        /* --- 4. GALLERY LAYOUT --- */
+        main {
+            position: relative; flex: 1;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 10;
+            perspective: 1200px; 
+        }
+
+        .gallery-header {
+            text-align: center; margin-bottom: 30px; z-index: 20;
+            opacity: 0; animation: fade-in 1.5s forwards 0.5s;
+        }
+
+        .gallery-header h1 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            color: var(--text-main);
+            letter-spacing: 12px;
+            margin-bottom: 8px;
+            /* Stronger shadow for readability against brighter bg */
+            text-shadow: 0 4px 30px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .gallery-header .subline {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: rgba(0,0,0,0.6); /* Darker backdrop for text */
+            padding: 5px 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: inline-block;
+            backdrop-filter: blur(5px);
+        }
+
+        /* --- CAROUSEL STACK --- */
+        .carousel-stage {
+            position: relative;
+            width: 100%; height: 520px;
+            display: flex; justify-content: center; align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .card {
+            position: absolute;
+            width: 320px; height: 480px;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            transition: all 0.7s var(--ease-cinematic);
+            cursor: pointer; overflow: hidden;
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(10px); /* Glass effect */
+        }
+
+        /* Card active state */
+        .card.active {
+            z-index: 10;
+            border-color: var(--gold);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), 0 0 15px var(--terminal-glow);
+        }
+
+        .card.left, .card.right {
+            z-index: 5;
+            filter: brightness(0.4) blur(2px);
+            opacity: 0.7;
+        }
+        .card.hidden { opacity: 0; pointer-events: none; transform: scale(0.5); }
+
+        .card-image {
+            width: 100%; height: 60%;
+            background: #000;
+            overflow: hidden; position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .card-image img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s;
+            filter: grayscale(80%) contrast(1.1);
+        }
+        
+        .card.active .card-image img { filter: grayscale(10%) contrast(1.05); }
+
+        .card-info {
+            flex: 1; padding: 25px;
+            display: flex; flex-direction: column;
+            justify-content: flex-start;
+            opacity: 0; transition: opacity 0.4s;
+            background: linear-gradient(to bottom, rgba(20,20,20,0.9), rgba(10,10,10,1));
+        }
+
+        .card.active .card-info { opacity: 1; }
+
+        .card-obj-code {
+            font-family: var(--font-mono); font-size: 0.65rem; color: var(--gold);
+            margin-bottom: 5px; opacity: 0.9;
+        }
+
+        .card-title {
+            font-family: var(--font-display); font-size: 1.3rem; color: var(--text-main);
+            margin-bottom: 10px; letter-spacing: 1px; line-height: 1;
+        }
+
+        .card-era {
+            font-family: var(--font-ui); font-size: 0.6rem; text-transform: uppercase;
+            color: var(--rust); letter-spacing: 2px;
+            margin-bottom: 15px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card-desc {
+            font-family: var(--font-ui); font-size: 0.75rem; color: #a0a09a;
+            line-height: 1.5;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+
+        .side-label {
+            position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center;
+            font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-main);
+            opacity: 0; transition: opacity 0.4s; z-index: 30;
+            text-shadow: 0 2px 4px black;
+            background: rgba(0,0,0,0.6); padding: 5px 0;
+        }
+        .card.left .side-label, .card.right .side-label { opacity: 1; }
+
+        /* --- CONTROLS --- */
+        .gallery-controls {
+            margin-top: 40px; z-index: 20;
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+        }
+
+        .nav-buttons { display: flex; gap: 40px; }
+        .control-btn {
+            background: rgba(0,0,0,0.7);
+            border: 1px solid var(--text-muted);
+            color: var(--text-main);
+            font-family: var(--font-mono); font-size: 0.75rem;
+            padding: 12px 25px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px;
+            transition: all 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .control-btn:hover {
+            border-color: var(--gold); color: var(--gold);
+            box-shadow: 0 0 15px var(--terminal-glow);
+            background: rgba(10, 5, 0, 0.9);
+        }
+
+        .index-indicator {
+            display: flex; gap: 15px; font-family: var(--font-mono);
+            font-size: 0.7rem; color: var(--text-muted); align-items: center;
+            background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px;
+            backdrop-filter: blur(4px);
+        }
+        .dot-group { display: flex; gap: 8px; }
+        .dot {
+            width: 4px; height: 4px; background: #666; border-radius: 50%;
+            transition: background 0.3s;
+        }
+        .dot.active { background: var(--gold); box-shadow: 0 0 5px var(--gold); }
+        .current-name { color: var(--text-main); letter-spacing: 2px; min-width: 150px; text-align: center; text-transform: uppercase; }
+
+        /* --- DETAIL (VITRINE) OVERLAY --- */
+        #detail-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 5, 0.85);
+            z-index: 200;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.5s var(--ease-cinematic);
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(15px); /* Strong blur to hide bright background */
+        }
+        #detail-view.active { opacity: 1; pointer-events: auto; }
+
+        .vitrine-panel {
+            width: 85%; max-width: 1200px; height: 75vh;
+            background: #0e0e10;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: grid; grid-template-columns: 1.2fr 1fr;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.9);
+            position: relative;
+        }
+        
+        .panel-header {
+            position: absolute; top: -45px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        .panel-obj-id { 
+            font-family: var(--font-mono); color: var(--gold); font-size: 0.9rem; letter-spacing: 2px; 
+            background: rgba(0,0,0,0.6); padding: 4px 8px; /* Readable against bg */
+        }
+        .close-btn {
+            background: rgba(0,0,0,0.6); border: 1px solid transparent; color: var(--text-muted); cursor: pointer;
+            font-family: var(--font-mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;
+            transition: 0.3s; padding: 5px 10px;
+        }
+        .close-btn:hover { color: var(--text-main); border-color: var(--text-muted); background: #000; }
+
+        .panel-image-container {
+            border-right: 1px solid rgba(255,255,255,0.05);
+            background: radial-gradient(circle at 50% 50%, #1a1a1e 0%, #000 100%);
+            position: relative; display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+        .panel-image-container img {
+            max-width: 85%; max-height: 85%; object-fit: contain;
+            filter: drop-shadow(0 30px 60px rgba(0,0,0,0.9));
+        }
+        .img-caption {
+            position: absolute; bottom: 20px; left: 20px;
+            font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; text-transform: uppercase;
+        }
+
+        .panel-data { padding: 60px; display: flex; flex-direction: column; overflow-y: auto; z-index: 2; }
+        
+        .panel-title {
+            font-family: var(--font-display); font-size: 2.5rem; color: var(--text-main);
+            letter-spacing: 6px; margin-bottom: 40px; line-height: 1;
+            padding-bottom: 20px; border-bottom: 1px solid var(--gold-dim);
+        }
+
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+        .meta-item label {
+            display: block; font-family: var(--font-ui); font-size: 0.6rem;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;
+        }
+        .meta-item span {
+            display: block; font-family: var(--font-mono); font-size: 0.85rem;
+            color: var(--gold); border-left: 2px solid var(--rust); padding-left: 10px;
+        }
+
+        .panel-description {
+            font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.7; color: #b0b0a0; margin-bottom: 20px;
+        }
+        .field-note {
+            margin-top: auto; background: rgba(255,255,255,0.03); padding: 15px;
+            border-left: 2px solid var(--text-muted);
+            font-family: var(--font-ui); font-size: 0.75rem; color: var(--text-muted); font-style: italic;
+        }
+
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .vitrine-panel { grid-template-columns: 1fr; width: 95%; height: 90vh; }
+            .panel-image-container { height: 35%; border-right: none; border-bottom: 1px solid #333; }
+            .panel-data { padding: 30px; }
+            .card { width: 280px; height: 400px; }
+            .gallery-header h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Backgrounds -->
+    <div class="bg-layer bg-image" id="bg-image"></div>
+    <div class="bg-layer noise"></div>
+    <div class="bg-layer grime"></div>
+    <div class="bg-layer vignette"></div>
+
+    <!-- Navigation -->
+    <header>
+        <div class="logo">JUNK</div>
+        <nav class="nav-links">
+            <a class="nav-item">Overview</a>
+            <a class="nav-item active">Artifacts</a>
+            <a class="nav-item">About</a>
+        </nav>
+    </header>
+
+    <!-- Gallery View -->
+    <main id="gallery-view">
+        <div class="gallery-header">
+            <h1>Museum of the End</h1>
+            <div class="subline">Recovered Objects from the Archipelago</div>
+        </div>
+
+        <div class="carousel-stage" id="carousel-stage">
+            <!-- Cards injected by JS -->
+        </div>
+
+        <div class="gallery-controls">
+            <div class="index-indicator">
+                <span id="current-obj-name" class="current-name">LOADING...</span>
+                <div class="dot-group" id="dot-group"></div>
+            </div>
+            <div class="nav-buttons">
+                <button class="control-btn" id="btn-prev">‹ Previous Object</button>
+                <button class="control-btn" id="btn-next">Next Object ›</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detailed Record View -->
+    <section id="detail-view">
+        <div class="vitrine-panel">
+            <div class="panel-header">
+                <div class="panel-obj-id" id="det-id">OBJ-XXX · NAME</div>
+                <button class="close-btn" id="btn-close">[Close Record]</button>
+            </div>
+            
+            <div class="panel-image-container">
+                <img src="" id="det-img" alt="Artifact">
+                <div class="img-caption">Archival Image Reconstruction</div>
+            </div>
+
+            <div class="panel-data">
+                <h2 class="panel-title" id="det-title">Artifact Name</h2>
+                
+                <div class="meta-grid">
+                    <div class="meta-item"><label>Origin</label><span id="det-origin">...</span></div>
+                    <div class="meta-item"><label>Era</label><span id="det-era">...</span></div>
+                    <div class="meta-item"><label>Material</label><span id="det-mat">...</span></div>
+                    <div class="meta-item"><label>Condition</label><span id="det-cond">...</span></div>
+                </div>
+
+                <p class="panel-description" id="det-desc">...</p>
+                <div class="field-note" id="det-note">...</div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // --- DATA ---
+        const artifacts = [
+            {
+                id: "OBJ-001",
+                name: "Carbonized Fragment",
+                owner: "Ziyi",
+                img: "https://images.unsplash.com/photo-1599026462703-97991b897935?q=80&w=600&auto=format&fit=crop",
+                origin: "Crater Edge (Sector 4)",
+                era: "The Collapse",
+                material: "Compressed Carbon, Iron",
+                condition: "Stable / Fragile",
+                desc: "A dense, heavy fragment of unknown machinery fused with organic matter. Isotope analysis suggests it was exposed to extreme heat during the primary event.",
+                note: "Recovered from the ash layer. Emits a faint hum."
+            },
+            {
+                id: "OBJ-002",
+                name: "Salt Battery",
+                owner: "Steven",
+                img: "https://images.unsplash.com/photo-1596516109370-29001ec8ec36?q=80&w=600&auto=format&fit=crop",
+                origin: "Kitanzi Port",
+                era: "11th Generation",
+                material: "Zinc, Copper, Brine",
+                condition: "Corroded / Leaking",
+                desc: "A crude energy storage device manufactured during the resource scarcity period. Uses seawater as a primary electrolyte.",
+                note: "Found in a sealed crate marked 'Emergency Power'."
+            },
+            {
+                id: "OBJ-003",
+                name: "Pyrekeeper’s Mask",
+                owner: "Yuzie",
+                img: "https://images.unsplash.com/photo-1545259742-b4fd8fea67e4?q=80&w=600&auto=format&fit=crop",
+                origin: "High Sanctuary",
+                era: "Ritual Era",
+                material: "Ceramic, Ash Glaze",
+                condition: "Intact",
+                desc: "Worn by the tenders of the eternal flame. The elongated shape is designed to filter smoke, though it offers no radiation protection.",
+                note: "Inscribed with names of the deceased."
+            },
+            {
+                id: "OBJ-004",
+                name: "Dhow Boat Model",
+                owner: "Lilleth",
+                img: "https://images.unsplash.com/photo-1512101147095-d05249ea1a06?q=80&w=600&auto=format&fit=crop",
+                origin: "Eastern Archipelago",
+                era: "Pre-Collapse",
+                material: "Teak Wood, Canvas",
+                condition: "Weathered",
+                desc: "A hand-carved replica of a traditional transport vessel. These ships were once the lifeline between the scattered islands.",
+                note: "Child's toy or navigator's planning tool? Unclear."
+            },
+            {
+                id: "OBJ-005",
+                name: "Sealed Canister",
+                owner: "Jonny",
+                img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=600&auto=format&fit=crop",
+                origin: "Industrial Zone 9",
+                era: "Late Industrial",
+                material: "Polymer, Aluminum",
+                condition: "Sealed / Dented",
+                desc: "A hermetically sealed container. The contents are liquid, but scanning attempts have failed due to the lead lining.",
+                note: "Do not attempt to open without hazmat protocols."
+            },
+            {
+                id: "OBJ-006",
+                name: "Optical Prism",
+                owner: "Isabel",
+                img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop",
+                origin: "Observatory Ruins",
+                era: "First Light Generation",
+                material: "Glass, Brass",
+                condition: "Chipped",
+                desc: "Part of a larger survey instrument. Used to measure land deformation before satellite telemetry was lost.",
+                note: "Refracts light in unusual spectra."
+            },
+            {
+                id: "OBJ-007",
+                name: "Amber Cube",
+                owner: "Zhixuan",
+                img: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=600&auto=format&fit=crop",
+                origin: "The Deep Mines",
+                era: "Unknown",
+                material: "Resin, Gold Flake",
+                condition: "Pristine",
+                desc: "A perfect geometric cube of fossilized resin. Suspended inside is a data chip from the Old World.",
+                note: "The chip is visible but inaccessible."
+            },
+            {
+                id: "OBJ-008",
+                name: "Signal Flare",
+                owner: "Tiger",
+                img: "https://images.unsplash.com/photo-1493612276216-9c9979d7266c?q=80&w=600&auto=format&fit=crop",
+                origin: "Coastal Outpost",
+                era: "Reclamation Era",
+                material: "Phosphorus, Cardboard",
+                condition: "Unspent",
+                desc: "Standard issue distress signal. The chemical compound has likely degraded, making ignition unstable.",
+                note: "Found in a watertight survival kit."
+            }
+        ];
+
+        // --- STATE & DOM ---
+        let currentIndex = 0;
+        const stage = document.getElementById('carousel-stage');
+        const dotsContainer = document.getElementById('dot-group');
+        const nameDisplay = document.getElementById('current-obj-name');
+        
+        const modal = document.getElementById('detail-view');
+        const bgImage = document.getElementById('bg-image');
+        
+        // --- INIT ---
+        function init() {
+            artifacts.forEach((art, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = index;
+                card.onclick = () => handleCardClick(index);
+                card.innerHTML = `
+                    <div class="card-image"><img src="${art.img}" loading="lazy"></div>
+                    <div class="card-info">
+                        <div class="card-obj-code">${art.id}</div>
+                        <div class="card-title">${art.name}</div>
+                        <div class="card-era">ERA: ${art.era}</div>
+                        <div class="card-desc">${art.desc}</div>
+                    </div>
+                    <div class="side-label">${art.id} // ${art.owner}</div>
+                `;
+                stage.appendChild(card);
+
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dotsContainer.appendChild(dot);
+            });
+            updateGallery();
+        }
+
+        // --- CORE LOGIC ---
+        function updateGallery() {
+            const cards = document.querySelectorAll('.card');
+            const dots = document.querySelectorAll('.dot');
+            
+            cards.forEach((card, i) => {
+                card.className = 'card';
+                const diff = i - currentIndex;
+                
+                if (diff === 0) {
+                    card.classList.add('active');
+                    card.style.transform = 'translateX(0) scale(1.1) translateZ(100px)';
+                    card.style.opacity = '1';
+                } else if (diff === -1 || (currentIndex === 0 && i === artifacts.length -1)) {
+                    card.classList.add('left');
+                    card.style.transform = 'translateX(-360px) scale(0.9) translateZ(0)';
+                    card.style.opacity = '0.7';
+                } else if (diff === 1 || (currentIndex === artifacts.length -1 && i === 0)) {
+                    card.classList.add('right');
+                    card.style.transform = 'translateX(360px) scale(0.9) translateZ(0)';
+                    card.style.opacity = '0.7';
+                } else if (diff < 0) {
+                    card.classList.add('hidden');
+                    card.style.transform = 'translateX(-650px) scale(0.5)';
+                } else {
+                    card.classList.add('hidden');
+                    card.style.transform = 'translateX(650px) scale(0.5)';
+                }
+            });
+
+            dots.forEach((d, i) => d.classList.toggle('active', i === currentIndex));
+            nameDisplay.innerText = `OBJECT ${artifacts[currentIndex].owner}`;
+        }
+
+        function handleCardClick(index) {
+            if (index === currentIndex) openRecord(index);
+            else { currentIndex = index; updateGallery(); }
+        }
+
+        function nextObj() {
+            if (currentIndex < artifacts.length - 1) currentIndex++;
+            else currentIndex = 0; // Loop
+            updateGallery();
+        }
+
+        function prevObj() {
+            if (currentIndex > 0) currentIndex--;
+            else currentIndex = artifacts.length - 1; // Loop
+            updateGallery();
+        }
+
+        function openRecord(index) {
+            const data = artifacts[index];
+            document.getElementById('det-id').innerText = `${data.id} · ${data.name.toUpperCase()}`;
+            document.getElementById('det-img').src = data.img;
+            document.getElementById('det-title').innerText = data.name;
+            document.getElementById('det-origin').innerText = data.origin;
+            document.getElementById('det-era').innerText = data.era;
+            document.getElementById('det-mat').innerText = data.material;
+            document.getElementById('det-cond').innerText = data.condition;
+            document.getElementById('det-desc').innerText = data.desc;
+            document.getElementById('det-note').innerText = `FIELD NOTE: ${data.note}`;
+            modal.classList.add('active');
+        }
+
+        document.getElementById('btn-next').addEventListener('click', nextObj);
+        document.getElementById('btn-prev').addEventListener('click', prevObj);
+        document.getElementById('btn-close').addEventListener('click', () => modal.classList.remove('active'));
+
+        document.addEventListener('keydown', (e) => {
+            if (modal.classList.contains('active')) { if (e.key === 'Escape') modal.classList.remove('active'); return; }
+            if (e.key === 'ArrowRight') nextObj();
+            if (e.key === 'ArrowLeft') prevObj();
+            if (e.key === 'Enter') openRecord(currentIndex);
+        });
+
+        // Simple Parallax
+        document.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.005;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.005;
+            bgImage.style.transform = `scale(1.02) translate(${moveX}px, ${moveY}px)`;
+        });
+
+        init();
+    </script>
+</body>
+</html>
