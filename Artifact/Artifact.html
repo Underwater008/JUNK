@@ -427,8 +427,26 @@
             <textarea id="admin-note" data-field="note"></textarea>
         </div>
 
+        <!-- Manual Save Button -->
+        <button id="admin-save-btn" style="
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: #0a0;
+            border: 1px solid #0f0;
+            color: #000;
+            font-family: 'Courier Prime', monospace;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        " onmouseover="this.style.background='#0f0'" onmouseout="this.style.background='#0a0'">
+            💾 SAVE CHANGES
+        </button>
+
         <div style="margin-top:10px; font-size:0.6rem; opacity:0.5; text-align:center;">
-            Changes auto-save.
+            Manual save required. Changes saved to cloud.
         </div>
 
         <!-- HISTORY MODE -->
@@ -900,27 +918,66 @@
                 fillAdminInputs();
             });
 
-            // Bind inputs to save live
+            // Track unsaved changes
+            let hasUnsavedChanges = false;
+
+            // Bind inputs to update data (without auto-save)
             Object.keys(inputs).forEach(key => {
                 const input = inputs[key];
-                
-                // Live update (visual only)
+
+                // Update artifact data on input (local only)
                 input.addEventListener('input', () => {
                     const i = parseInt(select.value);
                     if(key === 'mat') artifacts[i].material = input.value;
                     else if(key === 'cond') artifacts[i].condition = input.value;
                     else if(key === 'note') artifacts[i].note = input.value;
                     else artifacts[i][key] = input.value; // name, img, origin, era, desc
-                    saveData();
-                });
 
-                // History Log on change (Blur/Enter) to avoid spam
-                input.addEventListener('change', () => {
-                   const i = parseInt(select.value);
-                   const id = artifacts[i].id;
-                   saveHistory(`Modified ${id}: [${key.toUpperCase()}]`); 
+                    // Mark as having unsaved changes
+                    hasUnsavedChanges = true;
+                    updateSaveButton(true);
+
+                    // Update gallery preview in real-time
+                    updateGallery();
                 });
             });
+
+            // Manual Save Button
+            const saveBtn = document.getElementById('admin-save-btn');
+            saveBtn.addEventListener('click', () => {
+                if (!hasUnsavedChanges) {
+                    showSaveNotification(true, '✓ No changes to save');
+                    return;
+                }
+
+                const i = parseInt(select.value);
+                const id = artifacts[i].id;
+
+                // Save to JSONBin
+                saveData();
+
+                // Log to history
+                saveHistory(`Saved ${id}: Manual update`);
+
+                // Reset unsaved changes flag
+                hasUnsavedChanges = false;
+                updateSaveButton(false);
+            });
+
+            function updateSaveButton(hasChanges) {
+                const btn = document.getElementById('admin-save-btn');
+                if (hasChanges) {
+                    btn.style.background = '#ff0';
+                    btn.style.color = '#000';
+                    btn.style.borderColor = '#ff0';
+                    btn.innerHTML = '⚠️ SAVE CHANGES (UNSAVED)';
+                } else {
+                    btn.style.background = '#0a0';
+                    btn.style.color = '#000';
+                    btn.style.borderColor = '#0f0';
+                    btn.innerHTML = '💾 SAVE CHANGES';
+                }
+            }
 
             fillAdminInputs();
         }
