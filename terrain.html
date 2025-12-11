@@ -844,8 +844,8 @@
         let seaThreshold = 0.15; // Grayscale cutoff: <= is ocean (extended ocean)
         let seaFlatHeight = 1.0; // Flat column height for ocean
 
-        const cameraStartPos = { x: 80, y: 260, z: 80 };
-        const cameraEndPos = { x: 80, y: 140, z: 140 };
+        const cameraStartPos = { x: 0, y: 260, z: 0.1 };
+        const cameraEndPos = { x: 0, y: 200, z: 0.1 };
 
         // Person colors matching the navigation
         const personColors = {
@@ -955,7 +955,8 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf5f7fa);
             // Add fog to hide edges and create infinite feel
-            scene.fog = new THREE.Fog(0xf5f7fa, 250, 500);
+            // Starts with heavy fog for 2D look, clears during intro animation
+            scene.fog = new THREE.Fog(0xf5f7fa, 100, 200);
 
             // Camera - start at high position for entrance animation
             camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1819,22 +1820,14 @@
         }
 
         function startCameraIntro() {
-            const midPoint = new THREE.Vector3(
-                cameraStartPos.x + 30,
-                cameraStartPos.y - 70,
-                cameraStartPos.z + 60
-            );
-
             if (!cameraMixer) {
                 cameraMixer = new THREE.AnimationMixer(camera);
 
-                // Build a smooth curve through start -> mid -> end
+                // Simple straight down zoom - start and end are both top-down
                 const start = new THREE.Vector3(cameraStartPos.x, cameraStartPos.y, cameraStartPos.z);
                 const end = new THREE.Vector3(cameraEndPos.x, cameraEndPos.y, cameraEndPos.z);
-                const curve = new THREE.CatmullRomCurve3([start, midPoint, end], false, 'catmullrom', 0.5);
 
-                // Sample the curve to create a single smooth motion
-                // Shorter duration for earlier stop, with ease-out for gentle finish
+                // Create smooth animation for straight zoom
                 const duration = 3.2; // seconds
                 const samples = 100;
                 const times = new Float32Array(samples);
@@ -1842,13 +1835,12 @@
 
                 for (let i = 0; i < samples; i++) {
                     const t = i / (samples - 1);
-                    // Ease-out on the curve parameter so motion decelerates near the end
+                    // Ease-out for gentle finish
                     const te = 1 - Math.pow(1 - t, 3); // easeOutCubic
-                    const p = curve.getPoint(te);
                     times[i] = t * duration;
-                    values[i * 3 + 0] = p.x;
-                    values[i * 3 + 1] = p.y;
-                    values[i * 3 + 2] = p.z;
+                    values[i * 3 + 0] = start.x + (end.x - start.x) * te;
+                    values[i * 3 + 1] = start.y + (end.y - start.y) * te;
+                    values[i * 3 + 2] = start.z + (end.z - start.z) * te;
                 }
 
                 const positionTrack = new THREE.VectorKeyframeTrack('.position', times, values);
@@ -2612,6 +2604,25 @@
 
             if (cameraIntroPlaying) {
                 updateCameraControlDisplays();
+
+                // Animate fog based on camera Y position
+                // At start (y=260): fog near=100, far=200 (heavy fog, 2D look)
+                // At end (y=140): fog near=400, far=600 (no visible fog)
+                const startY = cameraStartPos.y;
+                const endY = cameraEndPos.y;
+                const currentY = camera.position.y;
+
+                // Calculate progress (0 at start, 1 at end)
+                const progress = Math.max(0, Math.min(1, (startY - currentY) / (startY - endY)));
+
+                // Interpolate fog values
+                const fogNearStart = 100;
+                const fogNearEnd = 400;
+                const fogFarStart = 200;
+                const fogFarEnd = 600;
+
+                scene.fog.near = fogNearStart + (fogNearEnd - fogNearStart) * progress;
+                scene.fog.far = fogFarStart + (fogFarEnd - fogFarStart) * progress;
             }
         }
 
