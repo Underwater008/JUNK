@@ -40,138 +40,6 @@
             letter-spacing: 1px;
             z-index: 5;
         }
-        #color-picker {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-            padding: 24px;
-            color: #1a1a1a;
-            font-size: 14px;
-            min-width: 260px;
-            z-index: 10;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #color-picker.visible {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-        #color-picker h3 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-        .picker-group {
-            margin-bottom: 16px;
-        }
-        .picker-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #4a4a4a;
-            font-size: 13px;
-        }
-        .picker-group input[type="text"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            color: #1a1a1a;
-            transition: border-color 0.2s;
-            box-sizing: border-box;
-        }
-        .picker-group input[type="text"]:focus {
-            outline: none;
-            border-color: #6b4ce6;
-        }
-        .cube-label {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #1a1a1a;
-            white-space: nowrap;
-            pointer-events: none;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            transform: translate(-50%, -100%);
-            margin-top: -8px;
-            transition: opacity 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .cube-label .material-symbols-outlined {
-            font-size: 16px;
-            font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 20;
-        }
-        .picker-group select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            color: #1a1a1a;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.2s;
-            box-sizing: border-box;
-        }
-        .picker-group select:focus {
-            outline: none;
-            border-color: #6b4ce6;
-        }
-        .picker-group select option {
-            padding: 8px;
-        }
-        .color-swatches {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            width: 100%;
-        }
-        .color-swatch {
-            width: 100%;
-            aspect-ratio: 1;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 3px solid transparent;
-            position: relative;
-            box-sizing: border-box;
-        }
-        .color-swatch:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        .color-swatch.selected {
-            border-color: #1a1a1a;
-            transform: scale(1.05);
-        }
-        .color-swatch.original {
-            background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
-            position: relative;
-        }
-        .color-swatch.original::after {
-            content: '↻';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            color: #666;
-        }
         #notification {
             position: absolute;
             background: rgba(255, 255, 255, 0.95);
@@ -607,6 +475,140 @@
             color: #1a1a1a;
             padding: 4px 8px;
         }
+        /* Journey editor */
+        #edit-toggle {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            border-radius: 50%;
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        #edit-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+        }
+        #edit-toggle.active {
+            background: #6b4ce6;
+            color: white;
+        }
+        #edit-toggle .toggle-icon {
+            transition: transform 0.2s ease;
+        }
+        #edit-toggle.active .toggle-icon {
+            transform: rotate(90deg);
+        }
+        #journey-editor {
+            position: absolute;
+            right: 30px;
+            bottom: 100px;
+            width: 320px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+            padding: 18px;
+            box-sizing: border-box;
+            z-index: 25;
+            display: none;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        #journey-editor.visible {
+            display: block;
+        }
+        #journey-editor h4 {
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .editor-field {
+            margin-bottom: 10px;
+        }
+        .editor-field label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a4a4a;
+            margin-bottom: 6px;
+        }
+        .editor-field input,
+        .editor-field select,
+        .editor-field textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            padding: 9px 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            color: #0f172a;
+        }
+        .editor-field textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .editor-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .editor-actions button {
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease;
+        }
+        .editor-actions button.primary {
+            background: #6b4ce6;
+            color: white;
+            box-shadow: 0 8px 20px rgba(107, 76, 230, 0.28);
+        }
+        .editor-actions button.secondary {
+            background: #eef2ff;
+            color: #312e81;
+        }
+        .editor-actions button.danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .editor-actions button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+        }
+        .editor-hint {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .editor-hint .material-symbols-outlined {
+            font-size: 16px;
+        }
+        body.edit-mode #journey-editor {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -656,7 +658,7 @@
         </div>
         <div class="journey-nav-item" data-person="xiao" onclick="selectPerson('xiao')">
             <div class="nav-dot" style="background: #F4C2C2;"></div>
-            <span class="nav-name">ZHIXUAN</span>
+            <span class="nav-name">XIAO</span>
         </div>
         <div class="journey-nav-item" data-person="tiger" onclick="selectPerson('tiger')">
             <div class="nav-dot" style="background: #6B4CE6;"></div>
@@ -680,47 +682,56 @@
         </div>
     </nav>
 
-    <div id="color-picker">
-        <h3>Customize Cube</h3>
-        <div class="picker-group">
-            <label>Icon Preset</label>
-            <select id="cube-icon">
-                <option value="">None</option>
-                <option value="electric_bolt">⚡ Power Station</option>
-                <option value="local_hospital">🏥 Hospital</option>
-                <option value="school">🏫 School</option>
-                <option value="account_balance">🏛️ Government</option>
-                <option value="radio">📻 Radio Station</option>
-                <option value="anchor">⚓ Port</option>
-                <option value="factory">🏭 Factory</option>
-                <option value="agriculture">🌾 Farm</option>
-                <option value="water_drop">💧 Water</option>
-                <option value="home">🏠 Residential</option>
-                <option value="store">🏪 Market</option>
-                <option value="local_fire_department">🚒 Fire Station</option>
-                <option value="local_police">🚓 Police</option>
-                <option value="flight">✈️ Airport</option>
-                <option value="warehouse">📦 Warehouse</option>
+    <div id="edit-toggle" title="Toggle edit mode" onclick="toggleEditMode()">
+        <span class="material-symbols-outlined toggle-icon" data-state="off">edit</span>
+    </div>
+
+    <div id="journey-editor">
+        <h4>
+            <span class="material-symbols-outlined">edit_square</span>
+            Journey Editor
+        </h4>
+        <div class="editor-field">
+            <label>Person <span id="editor-point-id"></span></label>
+            <div id="editor-person-name" style="font-weight:700;color:#1a1a1a;font-size:13px;"></div>
+        </div>
+        <div class="editor-field">
+            <label>Order</label>
+            <input type="number" id="editor-order" min="1" step="1" value="1">
+        </div>
+        <div class="editor-field">
+            <label>Name</label>
+            <input type="text" id="editor-name" placeholder="Location name">
+        </div>
+        <div class="editor-field">
+            <label>Icon</label>
+            <input type="text" id="editor-icon" placeholder="Material icon name">
+        </div>
+        <div class="editor-field">
+            <label>Asset Link <span style="font-weight:500;font-size:11px;color:#6b4ce6;">(image or video)</span></label>
+            <input type="text" id="editor-media" placeholder="https://...">
+        </div>
+        <div class="editor-field">
+            <label>Media Type</label>
+            <select id="editor-media-type">
+                <option value="">Auto</option>
+                <option value="image">Image</option>
+                <option value="video">Video</option>
             </select>
         </div>
-        <div class="picker-group">
-            <label>Custom Icon <a href="https://fonts.google.com/icons" target="_blank" style="font-size: 11px; color: #6b4ce6; text-decoration: none;">(browse)</a></label>
-            <input type="text" id="cube-icon-custom" placeholder="e.g., restaurant, build, star...">
+        <div class="editor-field">
+            <label>Description</label>
+            <textarea id="editor-description" placeholder="What is this point?"></textarea>
         </div>
-        <div class="picker-group">
-            <label>Label</label>
-            <input type="text" id="cube-label" placeholder="Enter name..." maxlength="20">
+        <div class="editor-actions">
+            <button class="secondary" id="editor-new">New Point</button>
+            <button class="primary" id="editor-save">Save Point</button>
+            <button class="danger" id="editor-delete">Delete</button>
+            <button class="secondary" id="editor-sync">Sync JSONBin</button>
         </div>
-        <div class="color-swatches">
-            <div class="color-swatch original" data-color="original" title="Original"></div>
-            <div class="color-swatch" data-color="#5CCBD4" style="background: #5CCBD4;" title="Cyan"></div>
-            <div class="color-swatch" data-color="#C855D8" style="background: #C855D8;" title="Magenta"></div>
-            <div class="color-swatch" data-color="#4A8EC2" style="background: #4A8EC2;" title="Blue"></div>
-            <div class="color-swatch" data-color="#6B4CE6" style="background: #6B4CE6;" title="Purple"></div>
-            <div class="color-swatch" data-color="#F4C2C2" style="background: #F4C2C2;" title="Pink"></div>
-            <div class="color-swatch" data-color="#A64D79" style="background: #A64D79;" title="Burgundy"></div>
-            <div class="color-swatch" data-color="#5ABF8C" style="background: #5ABF8C;" title="Green"></div>
-            <div class="color-swatch" data-color="#F4D35E" style="background: #F4D35E;" title="Yellow"></div>
+        <div class="editor-hint">
+            <span class="material-symbols-outlined">pan_tool_alt</span>
+            Drag markers on the map while edit mode is on.
         </div>
     </div>
 
@@ -818,8 +829,7 @@
         const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
         let scene, camera, renderer, controls, labelRenderer;
-        let instancedMesh;
-        let cubeData = [];
+        let terrainMesh;
         let animationStartTime = 0;
         let cameraMixer = null;
         let cameraAction = null;
@@ -833,18 +843,10 @@
         let mouse = new THREE.Vector2();
         let mouseDownPos = new THREE.Vector2();
         let isDragging = false;
-        let hoveredCubeIndex = -1;
-        let previousHoveredIndex = -1;
-        let selectedCubeIndex = -1;
-        let isOrbiting = false;
-        let orbitAngle = 0;
-        let cameraTransitioning = false;
-        let cameraTransitionProgress = 0;
-        let savedCameraPos = null;
-        let savedControlsTarget = null;
-        let cubeEditChanged = false;
-        let initialCubeState = null;
-        let lastSaveTime = 0;
+        let lastJourneySaveTime = 0;
+        let editMode = false;
+        let editingPoint = null;
+        let draggingJourneyMarker = null;
         // Mobile detection
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         // Post-processing
@@ -865,7 +867,6 @@
         const clock = new THREE.Clock();
         let heightScale = 7;
         const gridGap = 1.0;
-        const cubeSize = 1.0;
         const sampleRate = 4; // Sample every Nth pixel (128x128 = 16k instances)
         let seaThreshold = 0.15; // Grayscale cutoff: <= is ocean (extended ocean)
         let seaFlatHeight = 1.0; // Flat column height for ocean
@@ -885,8 +886,8 @@
             jonny: 0xF4D35E
         };
 
-        // Journey data for each person - different placeholder journeys
-        const allJourneys = {
+        // Default journey data for each person - acts as a seed if JSONBin is empty
+        const defaultJourneys = {
             isabel: [
                 { id: 1, name: "Coral Bay", icon: "waves", x: -45, z: -30, description: "Isabel discovered a hidden underwater cave system here." },
                 { id: 2, name: "Tide Pools", icon: "water_drop", x: -30, z: -20, description: "A research station studying marine life adaptation." },
@@ -910,9 +911,8 @@
                 { id: 4, name: "River Crossing", icon: "kayaking", x: 30, z: 25, description: "A dangerous ford that Tiger navigated many times." }
             ],
             xiao: [
-                { id: 1, name: "Science Vault", icon: "science", x: -20, z: 10, description: "An underground vault where scientific knowledge was preserved.", media: "Assets/images/Science class in the vault.jpg", mediaType: "image" },
-                { id: 2, name: "Observatory Dome", icon: "nights_stay", x: -5, z: 5, description: "Xiao spent nights here studying the changed constellations." },
-                { id: 3, name: "Data Archive", icon: "storage", x: 10, z: 0, description: "A server room Xiao worked to restore and preserve." }
+                { id: 1, name: "Observatory Dome", icon: "nights_stay", x: -5, z: 5, description: "Xiao spent nights here studying the changed constellations." },
+                { id: 2, name: "Data Archive", icon: "storage", x: 10, z: 0, description: "A server room Xiao worked to restore and preserve." }
             ],
             lillith: [
                 { id: 1, name: "Apothecary", icon: "medication", x: -35, z: -5, description: "Lillith established a clinic to heal the wounded." },
@@ -933,7 +933,53 @@
             ]
         };
 
-        const getSortedPeople = () => Object.keys(allJourneys).sort((a, b) => a.localeCompare(b));
+        const cloneJourneys = (source) => JSON.parse(JSON.stringify(source));
+
+        // Active journey data (mutable and synced to JSONBin)
+        let allJourneys = cloneJourneys(defaultJourneys);
+
+        const navPersonOrder = ['ziyi','steven','yuzie','lillith','jonny','isabel','xiao','tiger'];
+        const getSortedPeople = () => {
+            const existing = Object.keys(allJourneys);
+            const ordered = navPersonOrder.filter(p => existing.includes(p));
+            const extras = existing.filter(p => !navPersonOrder.includes(p)).sort((a, b) => a.localeCompare(b));
+            return [...ordered, ...extras];
+        };
+
+        const detectMediaType = (link = '') => {
+            let lower = (link || '').toLowerCase().trim();
+            if (!lower) return '';
+            if (lower.startsWith('%3cblockquote') || lower.includes('<blockquote')) return ''; // treat old embed snippets as invalid
+            if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.endsWith('.mp4') || lower.endsWith('.webm')) return 'video';
+            return 'image';
+        };
+
+        function normalizeJourneyPoint(stop, index, person) {
+            const point = stop;
+            delete point.y; // remove transient render data
+            delete point.color;
+            point.person = person;
+            const orderValue = point.order !== undefined ? point.order : (point.id !== undefined ? point.id : index + 1);
+            point.order = parseInt(orderValue, 10) || index + 1;
+            point.id = point.order;
+            const detectedType = point.media ? detectMediaType(point.media) : '';
+            if (detectedType) {
+                point.mediaType = detectedType;
+            } else if (point.media) {
+                // If it's an old embed snippet, clear it so it doesn't try to load
+                point.media = '';
+                point.mediaType = '';
+            }
+            return point;
+        }
+
+        function normalizeJourneyData(data) {
+            const safeData = data && Object.keys(data).length > 0 ? cloneJourneys(data) : cloneJourneys(defaultJourneys);
+            Object.keys(safeData).forEach(person => {
+                safeData[person] = (safeData[person] || []).map((stop, idx) => normalizeJourneyPoint(stop, idx, person));
+            });
+            return safeData;
+        }
 
         function hexToRgba(hex, alpha = 1) {
             const color = new THREE.Color(hex);
@@ -948,23 +994,192 @@
             const combined = [];
 
             people.forEach((person) => {
-                const stops = allJourneys[person] || [];
-                const color = personColors[person] || 0x6b4ce6;
-                stops.forEach((stop) => {
-                    combined.push({
-                        ...stop,
-                        person,
-                        color
-                    });
+                const stops = (allJourneys[person] || []).slice().sort((a, b) => (a.order ?? a.id ?? 0) - (b.order ?? b.id ?? 0));
+                stops.forEach((stop, idx) => {
+                    combined.push(normalizeJourneyPoint(stop, idx, person));
                 });
             });
 
             return combined;
         }
 
+        function renumberPersonJourneys(person) {
+            const list = allJourneys[person] || [];
+            list.sort((a, b) => (a.order ?? a.id ?? 0) - (b.order ?? b.id ?? 0));
+            list.forEach((pt, idx) => {
+                pt.order = idx + 1;
+                pt.id = pt.order;
+            });
+        }
+
+        function rebuildJourneySystem() {
+            if (!heightImageData || !journeysVisible) return;
+            journeyPoints = buildJourneyPoints(selectedPersonName);
+            clearJourneySystem();
+            createJourneySystem(heightImageData, heightW, heightH);
+        }
+
+        function populateEditorFields(point) {
+            const orderInput = document.getElementById('editor-order');
+            const nameInput = document.getElementById('editor-name');
+            const iconInput = document.getElementById('editor-icon');
+            const mediaInput = document.getElementById('editor-media');
+            const mediaTypeSelect = document.getElementById('editor-media-type');
+            const descriptionInput = document.getElementById('editor-description');
+            const idBadge = document.getElementById('editor-point-id');
+            const personName = document.getElementById('editor-person-name');
+
+            const personToShow = (point && point.person) || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
+            personName.textContent = personToShow ? personToShow.toUpperCase() : '';
+
+            if (!point) {
+                orderInput.value = 1;
+                nameInput.value = '';
+                iconInput.value = '';
+                mediaInput.value = '';
+                mediaTypeSelect.value = '';
+                descriptionInput.value = '';
+                idBadge.textContent = '';
+                return;
+            }
+
+            orderInput.value = point.order || point.id || 1;
+            nameInput.value = point.name || '';
+            iconInput.value = point.icon || '';
+            mediaInput.value = point.media || '';
+            mediaTypeSelect.value = point.mediaType || '';
+            descriptionInput.value = point.description || '';
+            idBadge.textContent = `#${point.order || point.id || ''}`;
+        }
+
+        function setEditingPoint(point) {
+            editingPoint = point || null;
+            populateEditorFields(point || null);
+        }
+
+        function createNewJourneyPoint() {
+            const targetPerson = (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]) || 'xiao';
+            allJourneys[targetPerson] = allJourneys[targetPerson] || [];
+            const nextOrder = (allJourneys[targetPerson].length || 0) + 1;
+            const newPoint = {
+                id: nextOrder,
+                order: nextOrder,
+                name: 'New Point',
+                icon: 'location_on',
+                x: 0,
+                z: 0,
+                description: '',
+                person: targetPerson
+            };
+            allJourneys[targetPerson].push(newPoint);
+            renumberPersonJourneys(targetPerson);
+            setEditingPoint(newPoint);
+            journeysVisible = true;
+            selectedPersonName = targetPerson;
+            setJourneySelection(targetPerson);
+        }
+
+        function applyEditorChanges() {
+            if (!editingPoint) return;
+
+            const orderInput = document.getElementById('editor-order');
+            const nameInput = document.getElementById('editor-name');
+            const iconInput = document.getElementById('editor-icon');
+            const mediaInput = document.getElementById('editor-media');
+            const mediaTypeSelect = document.getElementById('editor-media-type');
+            const descriptionInput = document.getElementById('editor-description');
+
+            const targetPerson = editingPoint.person || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
+            const newOrder = parseInt(orderInput.value, 10) || 1;
+            const targetListOld = allJourneys[editingPoint.person] || [];
+
+            // Move to new person list if needed
+            editingPoint.person = targetPerson;
+            editingPoint.order = newOrder;
+            editingPoint.id = newOrder;
+            editingPoint.name = nameInput.value.trim();
+            editingPoint.icon = iconInput.value.trim();
+            editingPoint.media = mediaInput.value.trim();
+            editingPoint.mediaType = mediaTypeSelect.value || detectMediaType(editingPoint.media);
+            editingPoint.description = descriptionInput.value.trim();
+
+            renumberPersonJourneys(targetPerson);
+            setJourneySelection(targetPerson);
+            lastJourneySaveTime = Date.now();
+        }
+
+        function deleteEditingPoint() {
+            if (!editingPoint) return;
+            const person = editingPoint.person;
+            const list = allJourneys[person] || [];
+            const idx = list.indexOf(editingPoint);
+            if (idx >= 0) {
+                list.splice(idx, 1);
+            }
+            renumberPersonJourneys(person);
+            editingPoint = null;
+            populateEditorFields(null);
+            rebuildJourneySystem();
+        }
+
+        function setupEditorUI() {
+            document.getElementById('editor-save').addEventListener('click', () => {
+                applyEditorChanges();
+                rebuildJourneySystem();
+                saveJourneysToBin();
+            });
+            document.getElementById('editor-new').addEventListener('click', () => {
+                createNewJourneyPoint();
+                rebuildJourneySystem();
+            });
+            document.getElementById('editor-delete').addEventListener('click', () => {
+                deleteEditingPoint();
+                saveJourneysToBin();
+            });
+            document.getElementById('editor-sync').addEventListener('click', () => {
+                applyEditorChanges();
+                rebuildJourneySystem();
+                saveJourneysToBin();
+            });
+            const closeBtn = document.getElementById('editor-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => toggleEditMode(false));
+            }
+        }
+
+        window.toggleEditMode = function(force) {
+            editMode = typeof force === 'boolean' ? force : !editMode;
+            const editor = document.getElementById('journey-editor');
+            const toggleBtn = document.getElementById('edit-toggle');
+            const toggleIcon = toggleBtn?.querySelector('.toggle-icon');
+            document.body.classList.toggle('edit-mode', editMode);
+            editor?.classList.toggle('visible', editMode);
+            toggleBtn?.classList.toggle('active', editMode);
+            if (toggleIcon) {
+                toggleIcon.textContent = editMode ? 'close' : 'edit';
+            }
+
+            // Keep journeys visible while editing
+            if (editMode) {
+                journeysVisible = true;
+                const defaultPerson = editingPoint?.person || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
+                const targetPerson = defaultPerson || getSortedPeople()[0];
+                selectedPersonName = targetPerson;
+                setJourneySelection(targetPerson);
+                controls.enabled = false;
+                if (!editingPoint && journeyPoints.length > 0) {
+                    setEditingPoint(journeyPoints[0]);
+                }
+            } else {
+                controls.enabled = true;
+                draggingJourneyMarker = null;
+            }
+        };
+
         // Currently active journey points (changes based on selection)
         let journeyPoints = [];
         let currentPerson = null;
+        let selectedPersonName = 'all';
         let journeysVisible = false; // Start with journeys hidden
 
         // Journey system variables
@@ -1039,6 +1254,7 @@
 
             // Setup control panel
             setupControls();
+            setupEditorUI();
 
             // Load heightmap
             loadHeightmap();
@@ -1086,7 +1302,7 @@
                 posZValue.textContent = value;
             });
 
-            // Height scale control (live update land cube heights)
+            // Height scale control (live update terrain heights)
             const heightSlider = document.getElementById('height-scale');
             const heightValue = document.getElementById('height-value');
             heightSlider.addEventListener('input', (e) => {
@@ -1329,31 +1545,7 @@
 
         // Apply height map rotation to terrain
         function applyHeightMapRotation() {
-            if (!instancedMesh || !heightImageData) return;
-
-            const positions = instancedMesh.geometry.attributes.position;
-
-            for (let i = 0; i < positions.count; i++) {
-                const x = positions.getX(i);
-                const z = positions.getY(i);
-
-                // Convert world position to texture coordinates
-                const u = (x + 64) / 128;
-                const v = (z + 64) / 128;
-
-                // Sample heightmap with rotation
-                const grayscale = sampleHeightmap(u, v);
-
-                // Calculate vertex height
-                const isOcean = grayscale <= seaThreshold;
-                const vertexHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
-
-                // Set Z position (height in plane geometry)
-                positions.setZ(i, vertexHeight);
-            }
-
-            positions.needsUpdate = true;
-            instancedMesh.geometry.computeVertexNormals();
+            updateTerrainHeights();
         }
 
         async function createGridTerrain(data, width, height, materialTex) {
@@ -1395,9 +1587,9 @@
             geometry.computeVertexNormals(); // Recalculate normals for proper lighting
 
             // Create mesh
-            instancedMesh = new THREE.Mesh(geometry, material);
-            instancedMesh.rotation.x = -Math.PI / 2; // Rotate to lay flat
-            scene.add(instancedMesh);
+            terrainMesh = new THREE.Mesh(geometry, material);
+            terrainMesh.rotation.x = -Math.PI / 2; // Rotate to lay flat
+            scene.add(terrainMesh);
 
             // Create extended ocean plane (same color as terrain ocean)
             // Find an ocean pixel by checking the heightmap for dark areas
@@ -1437,11 +1629,9 @@
             oceanPlane.position.y = seaFlatHeight - 0.1; // Slightly below terrain ocean
             scene.add(oceanPlane);
 
-            // Initialize empty cubeData for compatibility
-            cubeData = [];
-
-            // Load saved custom colors
-            await loadCustomColors();
+            // Load saved journeys
+            await loadJourneyData();
+            journeyPoints = buildJourneyPoints(selectedPersonName);
 
             // Start auto-sync to get updates from other users
             startAutoSync();
@@ -1546,7 +1736,7 @@
                     labelDiv.style.boxShadow = `0 12px 32px ${hexToRgba(personColorHex, 0.2)}`;
 
                     // Show only icon when viewing all journeys, show number + name for individual person
-                    if (currentPerson === 'all') {
+                    if (currentPerson === 'all' && !editMode) {
                         labelDiv.classList.add('icon-only');
                         labelDiv.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
                     } else {
@@ -1559,12 +1749,22 @@
                     label.position.set(point.x, point.y + 3, point.z);
                     scene.add(label);
 
-                    journeyMarkers.push({
+                    const markerObj = {
                         point: point,
                         sphere: sphere,
                         ring: ring,
                         label: label
+                    };
+
+                    // Allow clicking the label to open the gallery in normal mode
+                    labelDiv.style.pointerEvents = 'auto';
+                    labelDiv.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (editMode) return;
+                        onJourneyPointClick(markerObj);
                     });
+
+                    journeyMarkers.push(markerObj);
 
                     // Add to line points
                     linePoints.push(new THREE.Vector3(point.x, point.y + 0.5, point.z));
@@ -1696,15 +1896,17 @@
             const title = document.getElementById('media-title');
             const description = document.getElementById('media-description');
             const placeholder = document.getElementById('media-placeholder');
+            const rawMedia = point.media || '';
+            const mediaType = point.mediaType || detectMediaType(rawMedia);
 
             title.textContent = point.name;
             description.textContent = point.description;
 
             // Set media content
-            if (point.media && point.mediaType === 'image') {
-                placeholder.innerHTML = `<img src="${point.media}" alt="${point.name}">`;
-            } else if (point.mediaType === 'video') {
-                placeholder.innerHTML = `<video controls><source src="${point.media}" type="video/mp4">Your browser does not support video.</video>`;
+            if (rawMedia && mediaType === 'image') {
+                placeholder.innerHTML = `<img src="${rawMedia}" alt="${point.name}">`;
+            } else if (mediaType === 'video') {
+                placeholder.innerHTML = `<video controls><source src="${rawMedia}" type="video/mp4">Your browser does not support video.</video>`;
             } else {
                 placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
             }
@@ -1940,135 +2142,37 @@
             }
         }
 
-        function easeOutBack(x) {
-            const c1 = 1.70158;
-            const c3 = c1 + 1;
-            return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
-        }
-
-        function animateCubes() {
-            if (!instancedMesh) return;
-
-            const elapsed = Date.now() - animationStartTime;
-            const matrix = new THREE.Matrix4();
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-            let needsUpdate = false;
-            
-
-            cubeData.forEach(cube => {
-                let heightToUse = cube.currentHeight;
-
-                if (!cube.animated) {
-                    const timeSinceDelay = elapsed - cube.delay;
-
-                    if (timeSinceDelay > 0) {
-                        const duration = 800;
-                        const progress = Math.min(timeSinceDelay / duration, 1);
-
-                        if (progress >= 1) {
-                            cube.animated = true;
-                        }
-
-                        const easedProgress = easeOutBack(progress);
-                        cube.currentHeight = cube.targetHeight * easedProgress;
-                        heightToUse = cube.currentHeight;
-                        needsUpdate = true;
-                    }
-                }
-
-                if (needsUpdate) {
-                    // Update instance matrix
-                    position.set(cube.x, heightToUse / 2, cube.z);
-                    scale.set(1, Math.max(0.01, heightToUse), 1);
-                    matrix.compose(position, quaternion, scale);
-                    instancedMesh.setMatrixAt(cube.index, matrix);
-                }
-            });
-
-            if (needsUpdate) {
-                instancedMesh.instanceMatrix.needsUpdate = true;
+        function updateTerrainHeights() {
+            if (!terrainMesh || !heightImageData) return;
+            const positions = terrainMesh.geometry.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const z = positions.getY(i);
+                const u = (x + 64) / 128;
+                const v = (z + 64) / 128;
+                const grayscale = sampleHeightmap(u, v);
+                const isOcean = grayscale <= seaThreshold;
+                const vertexHeight = isOcean ? seaFlatHeight : (grayscale * heightScale + 0.5);
+                positions.setZ(i, vertexHeight);
             }
-            
+            positions.needsUpdate = true;
+            terrainMesh.geometry.computeVertexNormals();
         }
 
         function applySeaThreshold() {
-            if (!instancedMesh) return;
-
-            const oceanColor = new THREE.Color(0x1E7779); // Ocean blue
-            const tempColor = new THREE.Color();
-            const matrix = new THREE.Matrix4();
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-
-            cubeData.forEach((cube) => {
-                const isOcean = cube.grayscale <= seaThreshold;
-                cube.isOcean = isOcean;
-                const newTarget = isOcean ? seaFlatHeight : (cube.grayscale * heightScale + 0.5);
-                cube.targetHeight = newTarget;
-                cube.currentHeight = newTarget;
-                cube.animated = true;
-
-                // Update color
-                if (isOcean) {
-                    tempColor.copy(oceanColor);
-                } else {
-                    // Sample land color from material map honoring rotation
-                    const baseU = cube.u !== undefined ? cube.u : 0;
-                    const baseV = cube.v !== undefined ? cube.v : 0;
-                    const [sr, sg, sb] = sampleMaterialColor(baseU, baseV);
-                    tempColor.setRGB(sr, sg, sb);
-                }
-
-                // Update original color for this cube
-                cube.originalColor = tempColor.clone();
-                instancedMesh.setColorAt(cube.index, tempColor);
-
-                // Update transform
-                position.set(cube.x, newTarget / 2, cube.z);
-                scale.set(1, Math.max(0.01, newTarget), 1);
-                matrix.compose(position, quaternion, scale);
-                instancedMesh.setMatrixAt(cube.index, matrix);
-            });
-
-            if (instancedMesh.instanceColor) {
-                instancedMesh.instanceColor.needsUpdate = true;
-            }
-            instancedMesh.instanceMatrix.needsUpdate = true;
+            updateTerrainHeights();
         }
 
         function applyHeightScale() {
-            if (!instancedMesh) return;
-
-            const matrix = new THREE.Matrix4();
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-
-            cubeData.forEach((cube) => {
-                const isOcean = cube.grayscale <= seaThreshold;
-                const newTarget = isOcean ? seaFlatHeight : (cube.grayscale * heightScale + 0.5);
-                cube.isOcean = isOcean;
-                cube.targetHeight = newTarget;
-                cube.currentHeight = newTarget;
-                cube.animated = true;
-
-                // Update transform only (colors unchanged here)
-                position.set(cube.x, newTarget / 2, cube.z);
-                scale.set(1, Math.max(0.01, newTarget), 1);
-                matrix.compose(position, quaternion, scale);
-                instancedMesh.setMatrixAt(cube.index, matrix);
-            });
-
-            instancedMesh.instanceMatrix.needsUpdate = true;
+            updateTerrainHeights();
         }
 
         function onMouseDown(event) {
             mouseDownPos.x = event.clientX;
             mouseDownPos.y = event.clientY;
             isDragging = false;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
             // Stop camera intro animation if user clicks/drags
             if (cameraIntroPlaying) {
@@ -2077,6 +2181,22 @@
                 }
                 cameraIntroPlaying = false;
                 controls.enabled = true;
+            }
+
+            // Begin dragging journey marker in edit mode
+            if (editMode && journeysVisible) {
+                raycaster.setFromCamera(mouse, camera);
+                const journeySpheres = journeyMarkers.map(m => m.sphere);
+                const journeyIntersects = raycaster.intersectObjects(journeySpheres);
+                if (journeyIntersects.length > 0) {
+                    const clickedSphere = journeyIntersects[0].object;
+                    const marker = journeyMarkers.find(m => m.sphere === clickedSphere);
+                    if (marker) {
+                        draggingJourneyMarker = marker;
+                        setEditingPoint(marker.point);
+                        controls.enabled = false;
+                    }
+                }
             }
         }
 
@@ -2093,6 +2213,23 @@
                     isDragging = true;
                 }
             }
+
+            // Drag journey marker across terrain in edit mode
+            if (editMode && draggingJourneyMarker && terrainMesh && heightImageData) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(terrainMesh);
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const terrainHeight = getTerrainHeight(point.x, point.z, heightImageData, heightW, heightH);
+                    const markerPoint = draggingJourneyMarker.point;
+                    markerPoint.x = point.x;
+                    markerPoint.z = point.z;
+                    markerPoint.y = terrainHeight + 2;
+                    draggingJourneyMarker.sphere.position.set(markerPoint.x, markerPoint.y, markerPoint.z);
+                    draggingJourneyMarker.ring.position.set(markerPoint.x, markerPoint.y, markerPoint.z);
+                    draggingJourneyMarker.label.position.set(markerPoint.x, markerPoint.y + 3, markerPoint.z);
+                }
+            }
         }
 
         function onMouseUp(event) {
@@ -2100,13 +2237,22 @@
             mouseDownPos.x = undefined;
             mouseDownPos.y = undefined;
 
+            if (draggingJourneyMarker) {
+                draggingJourneyMarker = null;
+                rebuildJourneySystem();
+                saveJourneysToBin();
+                if (!editMode) {
+                    controls.enabled = true;
+                }
+            }
+
             // Reset after a short delay to allow click event to fire
             setTimeout(() => {
                 isDragging = false;
             }, 50);
         }
 
-        function showNotification(success, message, cubeIndex = -1) {
+        function showNotification(success, message) {
             const notification = document.getElementById('notification');
             const icon = notification.querySelector('.icon');
             const messageEl = notification.querySelector('.message');
@@ -2114,20 +2260,6 @@
             // Update content
             icon.textContent = success ? '✓' : '✕';
             messageEl.textContent = message;
-
-            // Position above the cube if index provided
-            if (cubeIndex >= 0 && cubeIndex < cubeData.length) {
-                const cube = cubeData[cubeIndex];
-                const worldPos = new THREE.Vector3(cube.x, cube.currentHeight + 10, cube.z);
-                const screenPos = worldPos.project(camera);
-
-                const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
-
-                notification.style.left = `${x}px`;
-                notification.style.top = `${y - 20}px`; // Offset for animation
-                notification.style.transform = 'translate(-50%, -100%)';
-            }
 
             // Update styling and show
             notification.className = success ? 'success visible' : 'error visible';
@@ -2138,83 +2270,7 @@
             }, 2000);
         }
 
-        async function saveCustomColors(cubeIndex = -1) {
-            // Set save time immediately to prevent auto-sync race condition
-            lastSaveTime = Date.now();
-
-            try {
-                // First, fetch the latest data to merge with
-                let existingData = {};
-                try {
-                    const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
-                        method: 'GET',
-                        headers: {
-                            'X-Master-Key': JSONBIN_API_KEY
-                        }
-                    });
-
-                    if (getResponse.ok) {
-                        const result = await getResponse.json();
-                        existingData = result.record?.cubes || {};
-                        console.log('Fetched existing data, cubes:', Object.keys(existingData).length);
-                    }
-                } catch (e) {
-                    console.warn('Could not fetch existing data, will overwrite:', e);
-                }
-
-                // Merge our changes with existing data
-                const mergedData = { ...existingData };
-                cubeData.forEach(cube => {
-                    const hasData = cube.customColor || cube.label || cube.icon;
-                    const existsInBin = existingData[cube.index];
-
-                    if (hasData || existsInBin) {
-                        // Save if has data OR if it exists in bin (to update/clear it)
-                        if (hasData) {
-                            const savedData = {
-                                color: cube.customColor ? '#' + cube.customColor.getHexString() : null,
-                                label: cube.label || '',
-                                icon: cube.icon || ''
-                            };
-                            console.log('Saving cube', cube.index, 'with data:', savedData);
-                            mergedData[cube.index] = savedData;
-                        } else {
-                            // Remove from bin if no data
-                            console.log('Deleting cube', cube.index, 'from bin (no custom data)');
-                            delete mergedData[cube.index];
-                        }
-                    }
-                });
-
-                console.log('Saving to JSONBin, total cubes:', Object.keys(mergedData).length);
-                const response = await fetch(JSONBIN_URL, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': JSONBIN_API_KEY
-                    },
-                    body: JSON.stringify({ cubes: mergedData })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Failed to save to JSONBin:', response.status, response.statusText, errorText);
-                    showNotification(false, 'Changes not saved', cubeIndex);
-                    return false;
-                }
-
-                const saveResult = await response.json();
-                console.log('Save successful:', saveResult);
-                showNotification(true, 'Changes saved', cubeIndex);
-                return true;
-            } catch (error) {
-                console.error('Error saving to JSONBin:', error);
-                showNotification(false, 'Changes not saved', cubeIndex);
-                return false;
-            }
-        }
-
-        async function loadCustomColors() {
+        async function loadJourneyData() {
             try {
                 const response = await fetch(`${JSONBIN_URL}/latest`, {
                     method: 'GET',
@@ -2223,253 +2279,123 @@
                     }
                 });
 
-                if (!response.ok) {
-                    console.error('Failed to load from JSONBin:', response.statusText);
+                if (response.ok) {
+                    const result = await response.json();
+                    const remoteJourneys = result.record?.journeys;
+                    allJourneys = normalizeJourneyData(remoteJourneys);
+                    if (journeysVisible) {
+                        journeyPoints = buildJourneyPoints(selectedPersonName);
+                        rebuildJourneySystem();
+                    }
                     return;
                 }
-
-                const result = await response.json();
-                const customData = result.record?.cubes || {};
-
-                Object.keys(customData).forEach(index => {
-                    const idx = parseInt(index);
-                    if (idx >= 0 && idx < cubeData.length) {
-                        const data = customData[index];
-
-                        // Load color
-                        if (data.color) {
-                            cubeData[idx].customColor = new THREE.Color(data.color);
-                        } else if (typeof data === 'string') {
-                            // Backward compatibility with old format
-                            cubeData[idx].customColor = new THREE.Color(data);
-                        }
-
-                        // Load label and icon
-                        if (data.label || data.icon) {
-                            cubeData[idx].label = data.label || '';
-                            cubeData[idx].icon = data.icon || '';
-                            updateCubeLabel(cubeData[idx], data.label, data.icon);
-                        }
-                    }
-                });
             } catch (e) {
-                console.error('Failed to load custom colors:', e);
+                console.warn('Failed to load journeys from JSONBin, using defaults', e);
+            }
+
+            allJourneys = normalizeJourneyData(allJourneys);
+        }
+
+        async function saveJourneysToBin() {
+            lastJourneySaveTime = Date.now();
+            try {
+                let existingRecord = {};
+                try {
+                    const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY
+                        }
+                    });
+                    if (getResponse.ok) {
+                        const result = await getResponse.json();
+                        existingRecord = result.record || {};
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch existing journeys, saving anyway', e);
+                }
+
+                const sanitizedJourneys = normalizeJourneyData(allJourneys);
+                const nextBody = { ...existingRecord, journeys: sanitizedJourneys };
+                const response = await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(nextBody)
+                });
+
+                if (!response.ok) {
+                    showNotification(false, 'Journeys not saved');
+                    return false;
+                }
+
+                await response.json();
+                showNotification(true, 'Journeys synced');
+                return true;
+            } catch (error) {
+                console.error('Error saving journeys:', error);
+                showNotification(false, 'Journeys not saved');
+                return false;
+            }
+        }
+
+        function syncJourneysFromRemote(remoteJourneys) {
+            const normalized = normalizeJourneyData(remoteJourneys);
+            const localSerialized = JSON.stringify(allJourneys);
+            const remoteSerialized = JSON.stringify(normalized);
+            if (localSerialized !== remoteSerialized) {
+                allJourneys = normalized;
+                if (journeysVisible) {
+                    journeyPoints = buildJourneyPoints(selectedPersonName);
+                    rebuildJourneySystem();
+                }
             }
         }
 
         function startAutoSync() {
             // Poll for updates every 5 seconds
             setInterval(async () => {
-                // Skip if we just saved (avoid overwriting our own changes)
-                if (Date.now() - lastSaveTime < 10000) {
-                    return;
-                }
+                if (Date.now() - lastJourneySaveTime < 10000) return;
+                if (editMode) return;
 
                 try {
                     const response = await fetch(`${JSONBIN_URL}/latest`, {
                         method: 'GET',
-                        headers: {
-                            'X-Master-Key': JSONBIN_API_KEY
-                        }
+                        headers: { 'X-Master-Key': JSONBIN_API_KEY }
                     });
 
                     if (!response.ok) return;
-
                     const result = await response.json();
-                    const customData = result.record?.cubes || {};
-
-                    // First, clear any cubes that were deleted from the bin
-                    cubeData.forEach((cube, idx) => {
-                        // Skip if currently selected to avoid conflicts
-                        if (cube.index === selectedCubeIndex) return;
-
-                        // If cube has custom data locally but not in bin, clear it
-                        if ((cube.customColor || cube.label || cube.icon) && !customData[idx]) {
-                            console.log('Auto-sync: Clearing cube', idx, 'as it was deleted from bin');
-                            cube.customColor = null;
-                            cube.label = '';
-                            cube.icon = '';
-                            updateCubeLabel(cube, '', '');
-                        }
-                    });
-
-                    // Update cubes that have changed
-                    Object.keys(customData).forEach(index => {
-                        const idx = parseInt(index);
-                        if (idx >= 0 && idx < cubeData.length) {
-                            const data = customData[index];
-                            const cube = cubeData[idx];
-
-                            // Check if this cube needs updating (skip if currently selected to avoid conflicts)
-                            if (cube.index === selectedCubeIndex) return;
-
-                            // Update color if changed
-                            const newColorHex = data.color;
-                            const currentColorHex = cube.customColor ? '#' + cube.customColor.getHexString() : null;
-                            if (newColorHex !== currentColorHex) {
-                                console.log('Auto-sync: Updating cube', idx, 'color from', currentColorHex, 'to', newColorHex);
-                                cube.customColor = newColorHex ? new THREE.Color(newColorHex) : null;
-                            }
-
-                            // Update label/icon if changed
-                            const newLabel = data.label || '';
-                            const newIcon = data.icon || '';
-                            if (cube.label !== newLabel || cube.icon !== newIcon) {
-                                cube.label = newLabel;
-                                cube.icon = newIcon;
-                                updateCubeLabel(cube, newLabel, newIcon);
-                            }
-                        }
-                    });
+                    const remoteJourneys = result.record?.journeys || {};
+                    syncJourneysFromRemote(remoteJourneys);
                 } catch (e) {
                     // Silently fail - don't spam console with sync errors
                 }
             }, 5000); // Sync every 5 seconds
         }
-
-        function updateCubeLabel(cube, labelText, iconName) {
-            // Remove existing label
-            if (cube.labelObject) {
-                scene.remove(cube.labelObject);
-                cube.labelObject = null;
-            }
-
-            // Update cube data
-            cube.label = labelText ? labelText.trim() : '';
-            cube.icon = iconName || '';
-
-            // Create new label if text or icon is provided
-            if (cube.label || cube.icon) {
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'cube-label';
-
-                // Add icon if provided
-                if (cube.icon) {
-                    const iconSpan = document.createElement('span');
-                    iconSpan.className = 'material-symbols-outlined';
-                    iconSpan.textContent = cube.icon;
-                    labelDiv.appendChild(iconSpan);
-                }
-
-                // Add text if provided
-                if (cube.label) {
-                    const textSpan = document.createElement('span');
-                    textSpan.textContent = cube.label;
-                    labelDiv.appendChild(textSpan);
-                }
-
-                const label = new CSS2DObject(labelDiv);
-                const totalHeight = cube.currentHeight + cube.hoverElevation;
-                label.position.set(cube.x, totalHeight + 2, cube.z);
-                scene.add(label);
-
-                cube.labelObject = label;
-            }
-        }
-
-        function setupColorSwatches() {
-            const swatches = document.querySelectorAll('.color-swatch');
-            const cube = cubeData[selectedCubeIndex];
-
-            // Setup icon preset dropdown
-            const iconSelect = document.getElementById('cube-icon');
-            const newIconSelect = iconSelect.cloneNode(true);
-            iconSelect.parentNode.replaceChild(newIconSelect, iconSelect);
-
-            // Check if current icon is in preset options
-            const isPresetIcon = Array.from(newIconSelect.options).some(opt => opt.value === cube.icon);
-
-            if (isPresetIcon) {
-                newIconSelect.value = cube.icon;
-            } else {
-                newIconSelect.value = '';
-            }
-
-            newIconSelect.addEventListener('change', (e) => {
-                const customInput = document.getElementById('cube-icon-custom');
-                customInput.value = ''; // Clear custom input when preset is selected
-                updateCubeLabel(cube, cube.label, e.target.value);
-            });
-
-            newIconSelect.addEventListener('mousedown', (e) => e.stopPropagation());
-            newIconSelect.addEventListener('click', (e) => e.stopPropagation());
-
-            // Setup custom icon input
-            const customIconInput = document.getElementById('cube-icon-custom');
-            const newCustomIconInput = customIconInput.cloneNode(true);
-            customIconInput.parentNode.replaceChild(newCustomIconInput, customIconInput);
-
-            // Show custom icon if it's not a preset
-            if (cube.icon && !isPresetIcon) {
-                newCustomIconInput.value = cube.icon;
-            } else {
-                newCustomIconInput.value = '';
-            }
-
-            newCustomIconInput.addEventListener('input', (e) => {
-                const select = document.getElementById('cube-icon');
-                select.value = ''; // Clear preset when custom is typed
-                updateCubeLabel(cube, cube.label, e.target.value.trim());
-            });
-
-            newCustomIconInput.addEventListener('mousedown', (e) => e.stopPropagation());
-            newCustomIconInput.addEventListener('click', (e) => e.stopPropagation());
-
-            // Setup label input
-            const labelInput = document.getElementById('cube-label');
-            labelInput.value = cube.label || '';
-
-            const newLabelInput = labelInput.cloneNode(true);
-            labelInput.parentNode.replaceChild(newLabelInput, labelInput);
-
-            newLabelInput.addEventListener('input', (e) => {
-                updateCubeLabel(cube, e.target.value, cube.icon);
-            });
-
-            newLabelInput.addEventListener('mousedown', (e) => e.stopPropagation());
-            newLabelInput.addEventListener('click', (e) => e.stopPropagation());
-
-            // Remove previous listeners
-            swatches.forEach(swatch => {
-                const clone = swatch.cloneNode(true);
-                swatch.parentNode.replaceChild(clone, swatch);
-            });
-
-            // Re-query after cloning
-            const newSwatches = document.querySelectorAll('.color-swatch');
-
-            newSwatches.forEach(swatch => {
-                // Mark currently selected color
-                const swatchColor = swatch.getAttribute('data-color');
-                if (swatchColor === 'original' && !cube.customColor) {
-                    swatch.classList.add('selected');
-                } else if (cube.customColor && swatchColor === '#' + cube.customColor.getHexString()) {
-                    swatch.classList.add('selected');
-                }
-
-                // Add click listener
-                swatch.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent click from bubbling to window
-                    const color = swatch.getAttribute('data-color');
-
-                    // Remove selected from all swatches
-                    newSwatches.forEach(s => s.classList.remove('selected'));
-                    swatch.classList.add('selected');
-
-                    // Update cube's custom color (updateHover will apply it)
-                    if (color === 'original') {
-                        cube.customColor = null;
-                    } else {
-                        cube.customColor = new THREE.Color(color);
-                    }
-                });
-            });
-        }
-
         function onMouseClick(event) {
             if (cameraIntroPlaying) return; // Don't allow clicks during intro
             if (isDragging) return; // Don't allow selection if dragging
             if (selectedJourneyPoint) return; // Don't allow clicks while viewing journey point
+
+            // Edit mode: select marker for editing instead of triggering gallery
+            if (editMode) {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const journeySpheres = journeyMarkers.map(m => m.sphere);
+                const journeyIntersects = raycaster.intersectObjects(journeySpheres);
+                if (journeyIntersects.length > 0) {
+                    const clickedSphere = journeyIntersects[0].object;
+                    const marker = journeyMarkers.find(m => m.sphere === clickedSphere);
+                    if (marker) {
+                        setEditingPoint(marker.point);
+                        return;
+                    }
+                }
+            }
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -2487,157 +2413,8 @@
                     return;
                 }
             }
-
-            // Clicking anywhere now just deselects (no cube selection in plane mode)
-            if (selectedCubeIndex !== -1) {
-                deselectCube();
-                return;
-            }
         }
 
-        function selectCube(index) {
-            if (index < 0 || index >= cubeData.length) return;
-
-            selectedCubeIndex = index;
-            const cube = cubeData[index];
-
-            // Save initial state for change detection
-            cubeEditChanged = false;
-            initialCubeState = {
-                color: cube.customColor ? cube.customColor.clone() : null,
-                label: cube.label || '',
-                icon: cube.icon || ''
-            };
-
-            // Save current camera state
-            if (!isOrbiting) {
-                savedCameraPos = camera.position.clone();
-                savedControlsTarget = controls.target.clone();
-            }
-
-            // Start transition to cube
-            cameraTransitioning = true;
-            cameraTransitionProgress = 0;
-            isOrbiting = true;
-            orbitAngle = 0;
-
-            // Disable controls during orbit
-            controls.enabled = false;
-
-            // Show color picker
-            const colorPicker = document.getElementById('color-picker');
-
-            // Fixed position: right side, vertically centered
-            const pickerWidth = 300;
-            const margin = 30;
-
-            colorPicker.style.right = `${margin}px`;
-            colorPicker.style.left = 'auto';
-            colorPicker.style.top = '50%';
-            colorPicker.style.transform = 'translateY(-50%)';
-
-            colorPicker.classList.add('visible');
-
-            // Setup color swatches
-            setupColorSwatches();
-        }
-
-        function deselectCube() {
-            if (selectedCubeIndex === -1) return;
-
-            const cubeIndex = selectedCubeIndex;
-            const cube = cubeData[cubeIndex];
-
-            // Check if anything changed
-            const hasChanges = checkIfCubeChanged(cube);
-
-            selectedCubeIndex = -1;
-
-            // Only save if changes were made
-            if (hasChanges) {
-                saveCustomColors(cubeIndex);
-            }
-
-            // Transition back to saved position
-            if (savedCameraPos && savedControlsTarget) {
-                cameraTransitioning = true;
-                cameraTransitionProgress = 0;
-                isOrbiting = false;
-                // Controls will be re-enabled in updateCameraOrbit when transition completes
-            }
-
-            // Hide color picker
-            const colorPicker = document.getElementById('color-picker');
-            colorPicker.classList.remove('visible');
-        }
-
-        function checkIfCubeChanged(cube) {
-            if (!initialCubeState) return false;
-
-            const currentColor = cube.customColor ? cube.customColor.getHexString() : null;
-            const initialColor = initialCubeState.color ? initialCubeState.color.getHexString() : null;
-
-            return currentColor !== initialColor ||
-                   cube.label !== initialCubeState.label ||
-                   cube.icon !== initialCubeState.icon;
-        }
-
-        function updateCameraOrbit() {
-            // Handle transition back to normal
-            if (!isOrbiting && cameraTransitioning && savedCameraPos && savedControlsTarget) {
-                cameraTransitionProgress += 0.05;
-                if (cameraTransitionProgress >= 1) {
-                    cameraTransitionProgress = 1;
-                    cameraTransitioning = false;
-                    controls.enabled = true;
-                }
-
-                const eased = 1 - Math.pow(1 - cameraTransitionProgress, 3); // ease out
-                camera.position.lerpVectors(camera.position.clone(), savedCameraPos, eased * 0.2);
-                controls.target.lerpVectors(controls.target.clone(), savedControlsTarget, eased * 0.2);
-                camera.lookAt(controls.target);
-                return;
-            }
-
-            if (!isOrbiting || selectedCubeIndex === -1) return;
-
-            const cube = cubeData[selectedCubeIndex];
-            const cubeWorldPos = new THREE.Vector3(cube.x, cube.currentHeight + 2, cube.z);
-
-            // Camera orbit parameters
-            const orbitRadius = 15;
-            const orbitHeight = 15; // Height above the top of the cube
-            const orbitSpeed = 0.001; // Slower rotation
-
-            // Update orbit angle
-            orbitAngle += orbitSpeed;
-
-            // Calculate camera position
-            const targetCameraPos = new THREE.Vector3(
-                cubeWorldPos.x + Math.cos(orbitAngle) * orbitRadius,
-                cubeWorldPos.y + orbitHeight,
-                cubeWorldPos.z + Math.sin(orbitAngle) * orbitRadius
-            );
-
-            // Animate transition to orbit position
-            if (cameraTransitioning) {
-                cameraTransitionProgress += 0.05;
-                if (cameraTransitionProgress >= 1) {
-                    cameraTransitionProgress = 1;
-                    cameraTransitioning = false;
-                }
-
-                const eased = 1 - Math.pow(1 - cameraTransitionProgress, 3); // ease out
-                camera.position.lerpVectors(savedCameraPos, targetCameraPos, eased);
-                controls.target.lerpVectors(savedControlsTarget, cubeWorldPos, eased);
-            } else {
-                // Smooth orbit around cube
-                camera.position.copy(targetCameraPos);
-                controls.target.copy(cubeWorldPos);
-            }
-
-            camera.lookAt(controls.target);
-        }
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -2674,115 +2451,15 @@
             scene.fog.far = fogFarStart + (fogFarEnd - fogFarStart) * progress;
         }
 
-        function updateHover() {
-            // Hover and cube interaction disabled in plane mode
-            if (cubeData.length === 0) return;
-
-            // Still animate cubes if they exist (for backwards compatibility)
-            const matrix = new THREE.Matrix4();
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-            const tempColor = new THREE.Color();
-            let needsUpdate = false;
-            let colorNeedsUpdate = false;
-
-            cubeData.forEach(cube => {
-                // If this cube is selected, keep it elevated and white
-                const isSelected = cube.index === selectedCubeIndex;
-                const hasCustomColor = cube.customColor !== null && cube.customColor !== undefined;
-                const targetProgress = (cube.isHovered || isSelected || hasCustomColor) ? 1 : 0;
-
-                // Animate hover progress
-                const progressChanged = cube.hoverProgress !== targetProgress;
-                const hoverStateChanged = cube.wasHovered !== cube.isHovered;
-                cube.wasHovered = cube.isHovered;
-
-                if (progressChanged) {
-                    const speed = 0.15; // Animation speed
-                    cube.hoverProgress += (targetProgress - cube.hoverProgress) * speed;
-
-                    // Clamp to target when very close
-                    if (Math.abs(cube.hoverProgress - targetProgress) < 0.01) {
-                        cube.hoverProgress = targetProgress;
-                    }
-                }
-
-                // Animate elevation bonus for colored cubes when hovering
-                const targetElevationBonus = (hasCustomColor && cube.isHovered && !isSelected) ? 3 : 0;
-                const bonusChanged = Math.abs(cube.hoverElevationBonus - targetElevationBonus) > 0.01;
-                if (bonusChanged) {
-                    const speed = 0.15;
-                    cube.hoverElevationBonus += (targetElevationBonus - cube.hoverElevationBonus) * speed;
-
-                    // Clamp to target when very close
-                    if (Math.abs(cube.hoverElevationBonus - targetElevationBonus) < 0.01) {
-                        cube.hoverElevationBonus = targetElevationBonus;
-                    }
-                }
-
-                // Update color if progress changed OR if this cube is selected OR if hover state changed OR bonus changed
-                if (progressChanged || isSelected || hasCustomColor || hoverStateChanged || bonusChanged) {
-                    // For selected cubes
-                    if (isSelected) {
-                        if (cube.customColor) {
-                            // Show custom color
-                            tempColor.copy(cube.customColor);
-                        } else {
-                            // Show white for default/original color
-                            tempColor.setRGB(1, 1, 1);
-                        }
-                    } else if (hasCustomColor) {
-                        // For cubes with custom color, brighten when hovered (animated)
-                        const whiteColor = new THREE.Color(1, 1, 1);
-                        const brightenAmount = (cube.hoverElevationBonus / 3) * 0.3; // Smoothly animate 0 to 0.3
-                        tempColor.copy(cube.customColor).lerp(whiteColor, brightenAmount);
-                    } else {
-                        // For hovered cubes, lerp to white
-                        const whiteColor = new THREE.Color(1, 1, 1);
-                        tempColor.copy(cube.originalColor).lerp(whiteColor, cube.hoverProgress);
-                    }
-
-                    instancedMesh.setColorAt(cube.index, tempColor);
-                    colorNeedsUpdate = true;
-
-                    // Update elevation with animated bonus
-                    cube.hoverElevation = cube.hoverProgress * 5 + cube.hoverElevationBonus;
-                    const totalHeight = cube.currentHeight + cube.hoverElevation;
-                    position.set(cube.x, totalHeight / 2, cube.z);
-                    scale.set(1, Math.max(0.01, totalHeight), 1);
-                    matrix.compose(position, quaternion, scale);
-                    instancedMesh.setMatrixAt(cube.index, matrix);
-
-                    // Update label position if exists
-                    if (cube.labelObject) {
-                        cube.labelObject.position.set(cube.x, totalHeight + 2, cube.z);
-                    }
-
-                    needsUpdate = true;
-                }
-            });
-
-            if (needsUpdate) {
-                instancedMesh.instanceMatrix.needsUpdate = true;
-            }
-            if (colorNeedsUpdate && instancedMesh.instanceColor) {
-                instancedMesh.instanceColor.needsUpdate = true;
-            }
-        }
-
         function animate() {
             requestAnimationFrame(animate);
 
             const delta = clock.getDelta();
 
-            if (!isOrbiting && !journeyTransitioning) {
+            if (!journeyTransitioning) {
                 controls.update();
             }
-            animateCubes();
             updateCameraAnimation(delta);
-            updateCameraOrbit();
-            updateHover();
             animateJourney();
             updateJourneyCamera();
 
@@ -2798,67 +2475,17 @@
 
             composer.render();
             labelRenderer.render(scene, camera);
-            updateLabelVisibility();
-        }
-
-        function updateLabelVisibility() {
-            // Get all visible labels with their screen positions
-            const labels = cubeData
-                .filter(cube => cube.labelObject)
-                .map(cube => {
-                    const labelDiv = cube.labelObject.element;
-                    const rect = labelDiv.getBoundingClientRect();
-                    return {
-                        cube: cube,
-                        element: labelDiv,
-                        rect: rect,
-                        center: {
-                            x: rect.left + rect.width / 2,
-                            y: rect.top + rect.height / 2
-                        }
-                    };
-                });
-
-            // Check each label against others
-            labels.forEach(label1 => {
-                let hasOverlap = false;
-
-                labels.forEach(label2 => {
-                    if (label1 === label2) return;
-
-                    // Check if rectangles overlap
-                    const overlap = !(
-                        label1.rect.right < label2.rect.left ||
-                        label1.rect.left > label2.rect.right ||
-                        label1.rect.bottom < label2.rect.top ||
-                        label1.rect.top > label2.rect.bottom
-                    );
-
-                    if (overlap) {
-                        // Calculate distance to camera
-                        const dist1 = camera.position.distanceTo(label1.cube.labelObject.position);
-                        const dist2 = camera.position.distanceTo(label2.cube.labelObject.position);
-
-                        // Hide the one that's farther from camera
-                        if (dist1 > dist2) {
-                            hasOverlap = true;
-                        }
-                    }
-                });
-
-                // Set opacity based on overlap
-                label1.element.style.opacity = hasOverlap ? '0' : '1';
-            });
         }
 
         init();
         animate();
 
         // Navigation functions
-        let selectedPersonName = 'all';
-
         function setJourneySelection(selection = 'all') {
-            const normalizedSelection = selection === 'all' || allJourneys[selection] ? selection : 'all';
+            let normalizedSelection = selection === 'all' || allJourneys[selection] ? selection : 'all';
+            if (editMode && normalizedSelection === 'all') {
+                normalizedSelection = editingPoint?.person || getSortedPeople()[0] || 'all';
+            }
             selectedPersonName = normalizedSelection;
             currentPerson = normalizedSelection; // Update currentPerson for marker display
 
@@ -2891,7 +2518,7 @@
         window.selectPerson = function(personName) {
             // Show journey points when selecting a person
             journeysVisible = true;
-            const nextSelection = selectedPersonName === personName ? 'all' : personName;
+            const nextSelection = editMode ? personName : (selectedPersonName === personName ? 'all' : personName);
 
             // Update overview button state
             const overviewBtn = document.getElementById('overview-btn');
@@ -2902,13 +2529,25 @@
             // Update journey-overview button state based on selection
             const journeyOverviewBtn = document.getElementById('journey-overview');
             if (journeyOverviewBtn) {
-                journeyOverviewBtn.classList.toggle('selected', nextSelection === 'all');
+                journeyOverviewBtn.classList.toggle('selected', !editMode && nextSelection === 'all');
             }
 
             setJourneySelection(nextSelection);
+
+            // When editing, refresh the editor to the newly selected person's first point
+            if (editMode) {
+                if (journeyPoints.length > 0) {
+                    setEditingPoint(journeyPoints[0]);
+                } else {
+                    setEditingPoint(null);
+                }
+            }
         };
 
         window.showOverview = function() {
+            if (editMode) {
+                toggleEditMode(false);
+            }
             journeysVisible = false;
             selectedPersonName = 'all';
 
@@ -2954,6 +2593,7 @@
         };
 
         window.showFullJourney = function() {
+            if (editMode) return; // In edit mode stay on a single person
             // Stop intro animation if playing
             stopCameraIntro();
 
