@@ -440,8 +440,8 @@
 
     <script>
         // --- JSONBin Configuration ---
-        const JSONBIN_BIN_ID = '693b34c943b1c97be9e7af24';
-        const JSONBIN_API_KEY = '$2a$10$zaSgEw46HW9R3JZwdkVlh.wSqgBycP0RexgEh.AoL2ortlH8rklvq';
+        const JSONBIN_BIN_ID = '693b37ccd0ea881f4022c6b8';
+        const JSONBIN_API_KEY = '$2a$10$C8JlCBhv4R5QAmFV/V8O2.rIHdMWNsu7t3ldu.9GUP19YQVrsqE96';
         const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
 
         let lastSaveTime = 0;
@@ -592,8 +592,9 @@
                 });
 
                 if (!response.ok) {
-                    console.error('Failed to save to JSONBin:', response.status);
-                    showSaveNotification(false);
+                    const errorText = await response.text();
+                    console.error('Failed to save to JSONBin:', response.status, errorText);
+                    showSaveNotification(false, `Error ${response.status}: ${errorText.substring(0, 50)}`);
                 } else {
                     console.log('Saved to JSONBin successfully');
                     showSaveNotification(true);
@@ -625,7 +626,7 @@
         }
 
         // Show save notification
-        function showSaveNotification(success) {
+        function showSaveNotification(success, errorMsg = '') {
             // Create notification element if it doesn't exist
             let notification = document.getElementById('save-notification');
             if (!notification) {
@@ -635,26 +636,33 @@
                     position: fixed;
                     bottom: 30px;
                     right: 30px;
-                    background: ${success ? 'rgba(0, 255, 0, 0.9)' : 'rgba(255, 0, 0, 0.9)'};
-                    color: #000;
+                    background: rgba(0, 0, 0, 0.9);
+                    color: #0f0;
                     padding: 12px 20px;
                     border-radius: 4px;
                     font-family: 'Courier Prime', monospace;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     z-index: 10000;
                     opacity: 0;
                     transition: opacity 0.3s;
+                    max-width: 400px;
+                    word-wrap: break-word;
                 `;
                 document.body.appendChild(notification);
             }
 
-            notification.textContent = success ? '✓ Saved to cloud' : '✗ Save failed';
-            notification.style.background = success ? 'rgba(0, 255, 0, 0.9)' : 'rgba(255, 0, 0, 0.9)';
+            if (success) {
+                notification.textContent = '✓ Saved to cloud';
+                notification.style.color = '#0f0';
+            } else {
+                notification.textContent = errorMsg || '✗ Save failed - Check console (F12)';
+                notification.style.color = '#f00';
+            }
             notification.style.opacity = '1';
 
             setTimeout(() => {
                 notification.style.opacity = '0';
-            }, 2000);
+            }, 3000);
         }
 
         // Auto-sync: Poll for updates every 5 seconds
