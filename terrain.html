@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Terrain Grid Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.0/dist/hls.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
@@ -565,7 +566,7 @@
         }
         .editor-actions {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-top: 10px;
         }
@@ -696,6 +697,10 @@
             <div id="editor-person-name" style="font-weight:700;color:#1a1a1a;font-size:13px;"></div>
         </div>
         <div class="editor-field">
+            <label>Point</label>
+            <select id="editor-point-select"></select>
+        </div>
+        <div class="editor-field">
             <label>Order</label>
             <input type="number" id="editor-order" min="1" step="1" value="1">
         </div>
@@ -708,7 +713,7 @@
             <input type="text" id="editor-icon" placeholder="Material icon name">
         </div>
         <div class="editor-field">
-            <label>Asset Link <span style="font-weight:500;font-size:11px;color:#6b4ce6;">(image or video)</span></label>
+            <label>Asset Link <span style="font-weight:500;font-size:11px;color:#6b4ce6;">(imgur image or vimeo link)</span></label>
             <input type="text" id="editor-media" placeholder="https://...">
         </div>
         <div class="editor-field">
@@ -727,7 +732,6 @@
             <button class="secondary" id="editor-new">New Point</button>
             <button class="primary" id="editor-save">Save Point</button>
             <button class="danger" id="editor-delete">Delete</button>
-            <button class="secondary" id="editor-sync">Sync JSONBin</button>
         </div>
         <div class="editor-hint">
             <span class="material-symbols-outlined">pan_tool_alt</span>
@@ -815,6 +819,7 @@
         }
     }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <script type="module">
         import * as THREE from 'three';
@@ -950,9 +955,25 @@
             let lower = (link || '').toLowerCase().trim();
             if (!lower) return '';
             if (lower.startsWith('%3cblockquote') || lower.includes('<blockquote')) return ''; // treat old embed snippets as invalid
+            if (lower.includes('<iframe') || lower.includes('<div')) return 'embed';
+            if (lower.includes('player.vimeo.com/external/')) return 'vimeo-external';
+            if (lower.endsWith('.m3u8') || lower.includes('.m3u8?')) return 'hls';
+            if (lower.includes('vimeo.com')) return 'vimeo';
             if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.endsWith('.mp4') || lower.endsWith('.webm')) return 'video';
             return 'image';
         };
+
+        function getVimeoId(url = '') {
+            // Matches vimeo.com/{id} or vimeo.com/.../{id}
+            const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+            return match ? match[1] : '';
+        }
+
+        function getVimeoExternalId(url = '') {
+            // Matches player.vimeo.com/external/{id}.m3u8 or .mp4
+            const match = url.match(/player\.vimeo\.com\/external\/(\d+)/i);
+            return match ? match[1] : '';
+        }
 
         function normalizeJourneyPoint(stop, index, person) {
             const point = stop;
@@ -1028,9 +1049,13 @@
             const descriptionInput = document.getElementById('editor-description');
             const idBadge = document.getElementById('editor-point-id');
             const personName = document.getElementById('editor-person-name');
+            const pointSelect = document.getElementById('editor-point-select');
 
             const personToShow = (point && point.person) || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
             personName.textContent = personToShow ? personToShow.toUpperCase() : '';
+
+            // Update point selector options
+            updatePointSelectOptions(point);
 
             if (!point) {
                 orderInput.value = 1;
@@ -1055,6 +1080,36 @@
         function setEditingPoint(point) {
             editingPoint = point || null;
             populateEditorFields(point || null);
+            updatePointSelectOptions(point || null);
+        }
+
+        function updatePointSelectOptions(currentPoint = null) {
+            const select = document.getElementById('editor-point-select');
+            if (!select) return;
+
+            const person = (currentPoint && currentPoint.person) || (editingPoint && editingPoint.person) || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
+            const list = (allJourneys[person] || []).slice().sort((a, b) => (a.order ?? a.id ?? 0) - (b.order ?? b.id ?? 0));
+
+            select.innerHTML = '';
+            if (!list.length) {
+                select.disabled = true;
+                const opt = document.createElement('option');
+                opt.textContent = 'No points';
+                opt.value = '';
+                select.appendChild(opt);
+                return;
+            }
+
+            select.disabled = false;
+            list.forEach(pt => {
+                const opt = document.createElement('option');
+                opt.value = pt.order;
+                opt.textContent = `${pt.order} — ${pt.name || 'Untitled'}`;
+                select.appendChild(opt);
+            });
+
+            const targetOrder = currentPoint?.order || (editingPoint?.order) || list[0].order;
+            select.value = targetOrder;
         }
 
         function createNewJourneyPoint() {
@@ -1117,8 +1172,12 @@
                 list.splice(idx, 1);
             }
             renumberPersonJourneys(person);
+            const nextPoint = (allJourneys[person] || [])[0] || null;
             editingPoint = null;
-            populateEditorFields(null);
+            populateEditorFields(nextPoint);
+            if (nextPoint) {
+                setEditingPoint(nextPoint);
+            }
             rebuildJourneySystem();
         }
 
@@ -1136,14 +1195,16 @@
                 deleteEditingPoint();
                 saveJourneysToBin();
             });
-            document.getElementById('editor-sync').addEventListener('click', () => {
-                applyEditorChanges();
-                rebuildJourneySystem();
-                saveJourneysToBin();
-            });
-            const closeBtn = document.getElementById('editor-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => toggleEditMode(false));
+            const pointSelect = document.getElementById('editor-point-select');
+            if (pointSelect) {
+                pointSelect.addEventListener('change', (e) => {
+                    const person = (editingPoint && editingPoint.person) || (selectedPersonName !== 'all' ? selectedPersonName : getSortedPeople()[0]);
+                    const order = parseInt(e.target.value, 10);
+                    const point = (allJourneys[person] || []).find(pt => pt.order === order);
+                    if (point) {
+                        setEditingPoint(point);
+                    }
+                });
             }
         }
 
@@ -1763,6 +1824,14 @@
                         if (editMode) return;
                         onJourneyPointClick(markerObj);
                     });
+                    // Allow dragging via the label in edit mode
+                    labelDiv.addEventListener('mousedown', (e) => {
+                        if (!editMode) return;
+                        e.stopPropagation();
+                        draggingJourneyMarker = markerObj;
+                        setEditingPoint(markerObj.point);
+                        controls.enabled = false;
+                    });
 
                     journeyMarkers.push(markerObj);
 
@@ -1905,8 +1974,55 @@
             // Set media content
             if (rawMedia && mediaType === 'image') {
                 placeholder.innerHTML = `<img src="${rawMedia}" alt="${point.name}">`;
+            } else if (mediaType === 'embed') {
+                // Render embed code directly (iframe/div snippets from Vimeo, etc.)
+                // Strip script tags as they won't execute via innerHTML
+                const cleanEmbed = rawMedia.replace(/<script[^>]*>.*?<\/script>/gi, '');
+                placeholder.innerHTML = `<div style="width:80vw;max-width:800px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;">${cleanEmbed}</div>`;
+                // Fix any nested iframe to fill the container
+                const iframe = placeholder.querySelector('iframe');
+                if (iframe) {
+                    iframe.style.cssText = 'width:100%;height:100%;border:0;';
+                }
+                // Remove the wrapper div from Vimeo embed if present
+                const innerDiv = placeholder.querySelector('.gallery-media > div > div');
+                if (innerDiv && innerDiv.style.padding) {
+                    innerDiv.style.cssText = 'width:100%;height:100%;position:relative;';
+                }
             } else if (mediaType === 'video') {
                 placeholder.innerHTML = `<video controls><source src="${rawMedia}" type="video/mp4">Your browser does not support video.</video>`;
+            } else if (mediaType === 'hls') {
+                const videoId = 'hls-video-' + Date.now();
+                placeholder.innerHTML = `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;background:#000;"><video id="${videoId}" controls playsinline style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"></video></div>`;
+                const video = document.getElementById(videoId);
+                if (window.Hls && Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(rawMedia);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.ERROR, () => {
+                        placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = rawMedia;
+                } else {
+                    placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
+                }
+            } else if (mediaType === 'vimeo-external') {
+                const vimeoId = getVimeoExternalId(rawMedia);
+                if (vimeoId) {
+                    const embedUrl = `https://player.vimeo.com/video/${vimeoId}?playsinline=1`;
+                    placeholder.innerHTML = `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;"><iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+                } else {
+                    placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
+                }
+            } else if (mediaType === 'vimeo') {
+                const vimeoId = getVimeoId(rawMedia);
+                if (vimeoId) {
+                    const embedUrl = `https://player.vimeo.com/video/${vimeoId}?playsinline=1`;
+                    placeholder.innerHTML = `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;"><iframe src="${embedUrl}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+                } else {
+                    placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
+                }
             } else {
                 placeholder.innerHTML = `<span class="material-symbols-outlined">${point.icon}</span>`;
             }
@@ -2240,7 +2356,6 @@
             if (draggingJourneyMarker) {
                 draggingJourneyMarker = null;
                 rebuildJourneySystem();
-                saveJourneysToBin();
                 if (!editMode) {
                     controls.enabled = true;
                 }
