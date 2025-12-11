@@ -439,6 +439,14 @@
     </div>
 
     <script>
+        // --- JSONBin Configuration ---
+        const JSONBIN_BIN_ID = '693b34c943b1c97be9e7af24';
+        const JSONBIN_API_KEY = '$2a$10$zaSgEw46HW9R3JZwdkVlh.wSqgBycP0RexgEh.AoL2ortlH8rklvq';
+        const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+        let lastSaveTime = 0;
+        let saveInProgress = false;
+
         // --- DEFAULT DATA (Updated Paths) ---
         const defaultArtifacts = [
             {
@@ -504,34 +512,191 @@
         let historyLog = [];
         let currentIndex = 0;
 
-        function loadData() {
-            const stored = localStorage.getItem('junk_artifacts_v2'); 
-            if (stored) {
-                artifacts = JSON.parse(stored);
-            } else {
+        // Load data from JSONBin
+        async function loadData() {
+            try {
+                const response = await fetch(`${JSONBIN_URL}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': JSONBIN_API_KEY
+                    }
+                });
+
+                if (!response.ok) {
+                    console.warn('Failed to load from JSONBin, using defaults');
+                    artifacts = JSON.parse(JSON.stringify(defaultArtifacts));
+                    return;
+                }
+
+                const result = await response.json();
+                const data = result.record;
+
+                if (data && data.artifacts && Array.isArray(data.artifacts)) {
+                    artifacts = data.artifacts;
+                    console.log('Loaded artifacts from JSONBin:', artifacts.length);
+                } else {
+                    console.log('No data in bin, using defaults');
+                    artifacts = JSON.parse(JSON.stringify(defaultArtifacts));
+                    // Initialize bin with default data
+                    await saveDataToJSONBin();
+                }
+
+                if (data && data.history) {
+                    historyLog = data.history;
+                }
+            } catch (e) {
+                console.error('Error loading from JSONBin:', e);
                 artifacts = JSON.parse(JSON.stringify(defaultArtifacts));
-            }
-            
-            const history = localStorage.getItem('junk_history_v1');
-            if(history) {
-                historyLog = JSON.parse(history);
             }
         }
 
+        // Save data to JSONBin with merge logic
+        async function saveDataToJSONBin() {
+            if (saveInProgress) return;
+            saveInProgress = true;
+            lastSaveTime = Date.now();
+
+            try {
+                // Fetch latest data to merge
+                let existingData = { artifacts: [], history: [] };
+                try {
+                    const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY
+                        }
+                    });
+
+                    if (getResponse.ok) {
+                        const result = await getResponse.json();
+                        existingData = result.record || existingData;
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch existing data for merge:', e);
+                }
+
+                // Merge artifacts and history
+                const dataToSave = {
+                    artifacts: artifacts,
+                    history: historyLog,
+                    lastModified: new Date().toISOString()
+                };
+
+                const response = await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToSave)
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to save to JSONBin:', response.status);
+                    showSaveNotification(false);
+                } else {
+                    console.log('Saved to JSONBin successfully');
+                    showSaveNotification(true);
+                }
+            } catch (error) {
+                console.error('Error saving to JSONBin:', error);
+                showSaveNotification(false);
+            } finally {
+                saveInProgress = false;
+            }
+        }
+
+        // Legacy saveData function - now calls JSONBin
         function saveData() {
-            localStorage.setItem('junk_artifacts_v2', JSON.stringify(artifacts));
+            saveDataToJSONBin();
             updateGallery();
             if(document.getElementById('detail-view').classList.contains('active')) {
                 openRecord(currentIndex);
             }
         }
 
+        // Save history with JSONBin sync
         function saveHistory(msg) {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             historyLog.unshift({ time: time, msg: msg });
             if(historyLog.length > 50) historyLog.pop(); // keep limit
-            localStorage.setItem('junk_history_v1', JSON.stringify(historyLog));
             renderHistory();
+            saveDataToJSONBin(); // Sync to cloud
+        }
+
+        // Show save notification
+        function showSaveNotification(success) {
+            // Create notification element if it doesn't exist
+            let notification = document.getElementById('save-notification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'save-notification';
+                notification.style.cssText = `
+                    position: fixed;
+                    bottom: 30px;
+                    right: 30px;
+                    background: ${success ? 'rgba(0, 255, 0, 0.9)' : 'rgba(255, 0, 0, 0.9)'};
+                    color: #000;
+                    padding: 12px 20px;
+                    border-radius: 4px;
+                    font-family: 'Courier Prime', monospace;
+                    font-size: 0.8rem;
+                    z-index: 10000;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                `;
+                document.body.appendChild(notification);
+            }
+
+            notification.textContent = success ? '✓ Saved to cloud' : '✗ Save failed';
+            notification.style.background = success ? 'rgba(0, 255, 0, 0.9)' : 'rgba(255, 0, 0, 0.9)';
+            notification.style.opacity = '1';
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 2000);
+        }
+
+        // Auto-sync: Poll for updates every 5 seconds
+        function startAutoSync() {
+            setInterval(async () => {
+                // Skip if we just saved (avoid overwriting our own changes)
+                if (Date.now() - lastSaveTime < 10000) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${JSONBIN_URL}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': JSONBIN_API_KEY
+                        }
+                    });
+
+                    if (!response.ok) return;
+
+                    const result = await response.json();
+                    const data = result.record;
+
+                    if (data && data.artifacts) {
+                        // Check if data has changed
+                        const currentData = JSON.stringify(artifacts);
+                        const newData = JSON.stringify(data.artifacts);
+
+                        if (currentData !== newData) {
+                            console.log('Auto-sync: Updating with new data from cloud');
+                            artifacts = data.artifacts;
+                            if (data.history) {
+                                historyLog = data.history;
+                            }
+                            updateGallery();
+                            renderHistory();
+                        }
+                    }
+                } catch (e) {
+                    // Silently fail - don't spam console
+                }
+            }, 5000); // Check every 5 seconds
         }
 
         function renderHistory() {
@@ -552,12 +717,13 @@
         const bgImage = document.getElementById('bg-image');
 
         // --- INIT ---
-        function init() {
-            loadData();
+        async function init() {
+            await loadData();
             renderCards();
             updateGallery();
             setupAdmin();
             renderHistory();
+            startAutoSync(); // Start polling for updates
         }
 
         function renderCards() {
