@@ -454,6 +454,13 @@
             flex-direction: column;
             gap: 8px;
         }
+        #overview-nav {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 20;
+        }
         .journey-nav-item {
             display: flex;
             align-items: center;
@@ -651,6 +658,14 @@
         <div class="journey-nav-item" data-person="tiger" onclick="selectPerson('tiger')">
             <div class="nav-dot" style="background: #6B4CE6;"></div>
             <span class="nav-name">TIGER</span>
+        </div>
+    </nav>
+
+    <!-- Overview Navigation (Right Side) -->
+    <nav id="overview-nav">
+        <div class="journey-nav-item selected" id="overview-btn" onclick="showOverview()">
+            <div class="nav-dot" style="background: #888;"></div>
+            <span class="nav-name">OVERVIEW</span>
         </div>
     </nav>
 
@@ -939,6 +954,7 @@
         // Currently active journey points (changes based on selection)
         let journeyPoints = [];
         let currentPerson = null;
+        let journeysVisible = false; // Start with journeys hidden
 
         // Journey system variables
         let journeyMarkers = [];
@@ -2829,17 +2845,48 @@
                 item.classList.toggle('selected', person === normalizedSelection);
             });
 
-            journeyPoints = buildJourneyPoints(normalizedSelection);
+            // Only build and show journey points if journeys are visible
+            if (journeysVisible) {
+                journeyPoints = buildJourneyPoints(normalizedSelection);
 
-            if (heightImageData) {
-                clearJourneySystem();
-                createJourneySystem(heightImageData, heightW, heightH);
+                if (heightImageData) {
+                    clearJourneySystem();
+                    createJourneySystem(heightImageData, heightW, heightH);
+                }
             }
         }
 
         window.selectPerson = function(personName) {
+            // Show journey points when selecting a person
+            journeysVisible = true;
             const nextSelection = selectedPersonName === personName ? 'all' : personName;
+
+            // Update overview button state
+            const overviewBtn = document.getElementById('overview-btn');
+            if (overviewBtn) {
+                overviewBtn.classList.remove('selected');
+            }
+
             setJourneySelection(nextSelection);
+        };
+
+        window.showOverview = function() {
+            journeysVisible = false;
+            selectedPersonName = 'all';
+
+            // Update button states
+            const overviewBtn = document.getElementById('overview-btn');
+            if (overviewBtn) {
+                overviewBtn.classList.add('selected');
+            }
+
+            document.querySelectorAll('.journey-nav-item[data-person]').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // Hide all journey points
+            clearJourneySystem();
+            journeyPoints = [];
         };
 
         window.showFullJourney = function() {
