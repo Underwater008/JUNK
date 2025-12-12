@@ -710,7 +710,7 @@
         }
         .map-label {
             pointer-events: all;
-            cursor: move;
+            cursor: pointer;
             user-select: none;
             color: #1a1a1a;
             font-weight: 600;
@@ -888,8 +888,8 @@
         </div>
         <div class="label-hint">
             <strong>Ctrl+Shift+X</strong> to toggle label mode<br>
-            Click on map to place new labels<br>
-            Drag labels to reposition them
+            Click on terrain to place labels<br>
+            Click labels to select, then delete
         </div>
     </div>
 
@@ -1410,9 +1410,8 @@
         // Label Admin Mode variables
         let labelAdminMode = false;
         let mapLabels = [];
+        let label3DObjects = []; // Three.js CSS2DObjects
         let selectedLabel = null;
-        let draggingLabel = null;
-        let labelDragOffset = { x: 0, y: 0 };
 
         // Load labels from localStorage
         function loadLabels() {
@@ -1420,7 +1419,7 @@
             if (saved) {
                 try {
                     mapLabels = JSON.parse(saved);
-                    mapLabels.forEach(label => createLabelElement(label));
+                    mapLabels.forEach(label => create3DLabel(label));
                 } catch (e) {
                     console.error('Error loading labels:', e);
                 }
@@ -1429,7 +1428,16 @@
 
         // Save labels to localStorage
         function saveLabels() {
-            localStorage.setItem('mapLabels', JSON.stringify(mapLabels));
+            const data = mapLabels.map(l => ({
+                id: l.id,
+                text: l.text,
+                worldX: l.worldX,
+                worldY: l.worldY,
+                worldZ: l.worldZ,
+                size: l.size,
+                color: l.color
+            }));
+            localStorage.setItem('mapLabels', JSON.stringify(data));
         }
 
         // Toggle label admin mode with Ctrl+Shift+X
@@ -1440,140 +1448,151 @@
                 document.body.classList.toggle('label-admin-mode', labelAdminMode);
 
                 if (labelAdminMode) {
-                    showNotification('Label Admin Mode Enabled', 'success');
+                    showNotification({ message: 'Label Admin Mode Enabled', type: 'success' });
                 } else {
-                    showNotification('Label Admin Mode Disabled', 'success');
+                    showNotification({ message: 'Label Admin Mode Disabled', type: 'success' });
                     selectedLabel = null;
+                    // Remove selection highlight
+                    label3DObjects.forEach(obj => {
+                        obj.element.style.outline = '';
+                    });
                 }
             }
         });
 
-        // Create label element
-        function createLabelElement(labelData) {
+        // Create 3D label attached to terrain
+        function create3DLabel(labelData) {
             const labelDiv = document.createElement('div');
             labelDiv.className = 'map-label';
             labelDiv.textContent = labelData.text;
-            labelDiv.style.position = 'absolute';
-            labelDiv.style.left = labelData.x + 'px';
-            labelDiv.style.top = labelData.y + 'px';
             labelDiv.style.fontSize = labelData.size + 'px';
             labelDiv.style.color = labelData.color;
             labelDiv.dataset.labelId = labelData.id;
 
-            // Make draggable in admin mode
-            labelDiv.addEventListener('mousedown', (e) => {
+            // Make clickable in admin mode
+            labelDiv.addEventListener('click', (e) => {
                 if (!labelAdminMode) return;
                 e.stopPropagation();
                 selectedLabel = labelData;
-                draggingLabel = labelData;
-                labelDragOffset.x = e.clientX - labelData.x;
-                labelDragOffset.y = e.clientY - labelData.y;
 
                 // Highlight selected
-                document.querySelectorAll('.map-label').forEach(l => l.style.outline = '');
+                label3DObjects.forEach(obj => {
+                    obj.element.style.outline = '';
+                });
                 labelDiv.style.outline = '2px solid #6b4ce6';
             });
 
-            document.body.appendChild(labelDiv);
-            return labelDiv;
+            const label2D = new CSS2DObject(labelDiv);
+            label2D.position.set(labelData.worldX, labelData.worldY, labelData.worldZ);
+            label2D.userData.labelData = labelData;
+
+            scene.add(label2D);
+            label3DObjects.push(label2D);
+
+            return label2D;
         }
-
-        // Handle label dragging
-        document.addEventListener('mousemove', (e) => {
-            if (draggingLabel && labelAdminMode) {
-                const newX = e.clientX - labelDragOffset.x;
-                const newY = e.clientY - labelDragOffset.y;
-
-                draggingLabel.x = newX;
-                draggingLabel.y = newY;
-
-                const labelEl = document.querySelector(`[data-label-id="${draggingLabel.id}"]`);
-                if (labelEl) {
-                    labelEl.style.left = newX + 'px';
-                    labelEl.style.top = newY + 'px';
-                }
-
-                saveLabels();
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            draggingLabel = null;
-        });
 
         // Add label button
         document.getElementById('add-label').addEventListener('click', () => {
             const text = document.getElementById('label-text').value.trim();
             if (!text) {
-                showNotification('Please enter label text', 'error');
+                showNotification({ message: 'Please enter label text', type: 'error' });
                 return;
             }
 
             const size = parseInt(document.getElementById('label-size').value);
             const color = document.getElementById('label-color').value;
 
-            const label = {
-                id: Date.now(),
-                text: text,
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 2,
-                size: size,
-                color: color
-            };
+            // Place at center of screen, raycast to find terrain position
+            mouse.x = 0;
+            mouse.y = 0;
+            raycaster.setFromCamera(mouse, camera);
 
-            mapLabels.push(label);
-            createLabelElement(label);
-            saveLabels();
+            const intersects = raycaster.intersectObject(terrainMesh);
 
-            document.getElementById('label-text').value = '';
-            showNotification('Label added', 'success');
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+
+                const label = {
+                    id: Date.now(),
+                    text: text,
+                    worldX: point.x,
+                    worldY: point.y + 2, // Slightly above terrain
+                    worldZ: point.z,
+                    size: size,
+                    color: color
+                };
+
+                mapLabels.push(label);
+                create3DLabel(label);
+                saveLabels();
+
+                document.getElementById('label-text').value = '';
+                showNotification({ message: 'Label added to map', type: 'success' });
+            } else {
+                showNotification({ message: 'Could not find terrain position', type: 'error' });
+            }
         });
 
         // Delete label button
         document.getElementById('delete-label').addEventListener('click', () => {
             if (!selectedLabel) {
-                showNotification('No label selected', 'error');
+                showNotification({ message: 'No label selected', type: 'error' });
                 return;
             }
 
-            const labelEl = document.querySelector(`[data-label-id="${selectedLabel.id}"]`);
-            if (labelEl) {
-                labelEl.remove();
+            // Remove from scene
+            const labelObj = label3DObjects.find(obj => obj.userData.labelData.id === selectedLabel.id);
+            if (labelObj) {
+                scene.remove(labelObj);
+                labelObj.element.remove();
             }
 
+            // Remove from arrays
+            label3DObjects = label3DObjects.filter(obj => obj.userData.labelData.id !== selectedLabel.id);
             mapLabels = mapLabels.filter(l => l.id !== selectedLabel.id);
+
             saveLabels();
             selectedLabel = null;
-            showNotification('Label deleted', 'success');
+            showNotification({ message: 'Label deleted', type: 'success' });
         });
 
         // Place label on map click in admin mode
-        document.addEventListener('click', (e) => {
+        renderer.domElement.addEventListener('click', (e) => {
             if (!labelAdminMode) return;
 
-            // Check if click is on canvas or body (not on UI elements)
-            if (e.target.tagName === 'CANVAS' || e.target.tagName === 'BODY') {
-                const text = document.getElementById('label-text').value.trim();
-                if (!text) return;
+            const text = document.getElementById('label-text').value.trim();
+            if (!text) return;
 
+            // Calculate mouse position in normalized device coordinates
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(terrainMesh);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
                 const size = parseInt(document.getElementById('label-size').value);
                 const color = document.getElementById('label-color').value;
 
                 const label = {
                     id: Date.now(),
                     text: text,
-                    x: e.clientX,
-                    y: e.clientY,
+                    worldX: point.x,
+                    worldY: point.y + 2,
+                    worldZ: point.z,
                     size: size,
                     color: color
                 };
 
                 mapLabels.push(label);
-                createLabelElement(label);
+                create3DLabel(label);
                 saveLabels();
 
                 document.getElementById('label-text').value = '';
-                showNotification('Label placed', 'success');
+                showNotification({ message: 'Label placed on terrain', type: 'success' });
             }
         });
 
