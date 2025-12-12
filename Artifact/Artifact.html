@@ -14,9 +14,9 @@
             --bg-panel: rgba(12, 12, 14, 0.9);
             --text-main: #e8e8e0;
             --text-muted: #a0a09a;
-            
+
             /* Accents */
-            --gold: #d4af37; 
+            --gold: #d4af37;
             --rust: #8a6a5c;
             --terminal-glow: rgba(212, 175, 55, 0.2);
 
@@ -53,7 +53,7 @@
             background-image: url('Archive_Hall.png'), url('https://images.unsplash.com/photo-1518066000714-58c45f1a2c0a?q=80&w=2000&auto=format&fit=crop');
             background-size: cover;
             background-position: center center;
-            opacity: 1; 
+            opacity: 1;
             filter: brightness(0.65) contrast(1.1) saturation(0.8);
             transform: scale(1.02);
             transition: transform 0.2s ease-out;
@@ -87,10 +87,9 @@
         .logo {
             display: flex; align-items: center;
         }
-        
-        /* Updated Logo Image Styling */
+
         .logo img {
-            height: 35px; /* Fits nicely in 80px header */
+            height: 35px;
             width: auto;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
             opacity: 0.9;
@@ -110,7 +109,7 @@
         main {
             position: relative; flex: 1; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 10;
-            perspective: 1200px; 
+            perspective: 1200px;
         }
 
         .gallery-header {
@@ -237,8 +236,8 @@
             display: flex; justify-content: space-between; align-items: flex-end;
             padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15);
         }
-        .panel-obj-id { 
-            font-family: var(--font-mono); color: var(--gold); font-size: 0.9rem; letter-spacing: 2px; 
+        .panel-obj-id {
+            font-family: var(--font-mono); color: var(--gold); font-size: 0.9rem; letter-spacing: 2px;
             background: rgba(0,0,0,0.6); padding: 4px 8px;
         }
         .close-btn {
@@ -247,6 +246,7 @@
             text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; padding: 5px 10px;
         }
         .close-btn:hover { color: var(--text-main); border-color: var(--text-muted); background: #000; }
+
         .panel-image-container {
             border-right: 1px solid rgba(255,255,255,0.05);
             background: radial-gradient(circle at 50% 50%, #1a1a1e 0%, #000 100%);
@@ -255,7 +255,25 @@
         .panel-image-container img {
             max-width: 85%; max-height: 85%; object-fit: contain;
             filter: drop-shadow(0 30px 60px rgba(0,0,0,0.9));
+            transition: opacity 0.3s ease;
         }
+
+        /* IMAGE NAVIGATION BUTTONS */
+        .img-nav-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(0,0,0,0.4); color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 40px; height: 60px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-mono); font-size: 1.5rem;
+            cursor: pointer; transition: all 0.2s; z-index: 10;
+            backdrop-filter: blur(4px);
+        }
+        .img-nav-btn:hover { background: var(--gold); color: #000; border-color: var(--gold); }
+        .img-nav-btn.prev { left: 10px; }
+        .img-nav-btn.next { right: 10px; }
+        .img-nav-btn.hidden { opacity: 0; pointer-events: none; }
+
         .img-caption {
             position: absolute; bottom: 20px; left: 20px;
             font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted);
@@ -367,7 +385,11 @@
                 <button class="close-btn" id="btn-close">[Close Record]</button>
             </div>
             <div class="panel-image-container">
+                <!-- Navigation Buttons for Images -->
+                <button class="img-nav-btn prev hidden" id="det-img-prev" title="Previous Image">‹</button>
                 <img src="" id="det-img" alt="Artifact">
+                <button class="img-nav-btn next hidden" id="det-img-next" title="Next Image">›</button>
+
                 <div class="img-caption">Archival Image Reconstruction</div>
             </div>
             <div class="panel-data">
@@ -396,10 +418,14 @@
             <input type="text" id="admin-name" data-field="name">
         </div>
         <div class="admin-row">
-            <label>Image Path:</label>
+            <label>Image Path (Base):</label>
             <input type="text" id="admin-img" data-field="img">
         </div>
-        
+        <div class="admin-row">
+            <label>Image Count:</label>
+            <input type="number" id="admin-img-count" data-field="imgCount" min="1" value="1">
+        </div>
+
         <!-- Expanded Fields -->
         <div class="admin-row">
             <label>Origin:</label>
@@ -469,56 +495,56 @@
         const defaultArtifacts = [
             {
                 id: "OBJ-001", name: "Carbonized Fragment", owner: "Ziyi",
-                img: "OBJECT_Ziyi.png",
+                img: "OBJECT_Ziyi.png", imgCount: 1,
                 origin: "Crater Edge (Sector 4)", era: "The Collapse", material: "Compressed Carbon, Iron", condition: "Stable / Fragile",
                 desc: "A dense, heavy fragment of unknown machinery fused with organic matter. Isotope analysis suggests it was exposed to extreme heat during the primary event.",
                 note: "Recovered from the ash layer. Emits a faint hum."
             },
             {
                 id: "OBJ-002", name: "Salt Battery", owner: "Steven",
-                img: "OBJECT_Steven.png",
+                img: "OBJECT_Steven.png", imgCount: 1,
                 origin: "Kitanzi Port", era: "11th Generation", material: "Zinc, Copper, Brine", condition: "Corroded / Leaking",
                 desc: "A crude energy storage device manufactured during the resource scarcity period. Uses seawater as a primary electrolyte.",
                 note: "Found in a sealed crate marked 'Emergency Power'."
             },
             {
-                id: "OBJ-003", name: "Pyrekeeper’s Mask", owner: "Yuzie",
-                img: "OBJECT_Yuzie.png",
+                id: "OBJ-003", name: "Pyrekeeper's Mask", owner: "Yuzie",
+                img: "OBJECT_Yuzie.png", imgCount: 1,
                 origin: "High Sanctuary", era: "Ritual Era", material: "Ceramic, Ash Glaze", condition: "Intact",
                 desc: "Worn by the tenders of the eternal flame. The elongated shape is designed to filter smoke, though it offers no radiation protection.",
                 note: "Inscribed with names of the deceased."
             },
             {
                 id: "OBJ-004", name: "Dhow Boat Model", owner: "Lilleth",
-                img: "OBJECT_Lilleth.png",
+                img: "OBJECT_Lilleth.png", imgCount: 1,
                 origin: "Eastern Archipelago", era: "Pre-Collapse", material: "Teak Wood, Canvas", condition: "Weathered",
                 desc: "A hand-carved replica of a traditional transport vessel. These ships were once the lifeline between the scattered islands.",
                 note: "Child's toy or navigator's planning tool? Unclear."
             },
             {
                 id: "OBJ-005", name: "Sealed Canister", owner: "Jonny",
-                img: "OBJECT_Jonny.png",
+                img: "OBJECT_Jonny.png", imgCount: 1,
                 origin: "Industrial Zone 9", era: "Late Industrial", material: "Polymer, Aluminum", condition: "Sealed / Dented",
                 desc: "A hermetically sealed container. The contents are liquid, but scanning attempts have failed due to the lead lining.",
                 note: "Do not attempt to open without hazmat protocols."
             },
             {
                 id: "OBJ-006", name: "Optical Prism", owner: "Isabel",
-                img: "OBJECT_Isabel.png",
+                img: "OBJECT_Isabel.png", imgCount: 1,
                 origin: "Observatory Ruins", era: "First Light Generation", material: "Glass, Brass", condition: "Chipped",
                 desc: "Part of a larger survey instrument. Used to measure land deformation before satellite telemetry was lost.",
                 note: "Refracts light in unusual spectra."
             },
             {
                 id: "OBJ-007", name: "Amber Cube", owner: "Zhixuan",
-                img: "OBJECT_Zhixuan.png",
+                img: "OBJECT_Zhixuan.png", imgCount: 1,
                 origin: "The Deep Mines", era: "Unknown", material: "Resin, Gold Flake", condition: "Pristine",
                 desc: "A perfect geometric cube of fossilized resin. Suspended inside is a data chip from the Old World.",
                 note: "The chip is visible but inaccessible."
             },
             {
                 id: "OBJ-008", name: "Signal Flare", owner: "Tiger",
-                img: "OBJECT_Tiger.png",
+                img: "OBJECT_Tiger.png", imgCount: 1,
                 origin: "Coastal Outpost", era: "Reclamation Era", material: "Phosphorus, Cardboard", condition: "Unspent",
                 desc: "Standard issue distress signal. The chemical compound has likely degraded, making ignition unstable.",
                 note: "Found in a watertight survival kit."
@@ -529,6 +555,9 @@
         let artifacts = [];
         let historyLog = [];
         let currentIndex = 0;
+
+        // New State for Multi-Image Handling
+        let currentDetailImageIndex = 0;
 
         // Load data from JSONBin
         async function loadData() {
@@ -551,6 +580,10 @@
 
                 if (data && data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0) {
                     artifacts = data.artifacts;
+                    // Ensure imgCount exists for legacy data
+                    artifacts.forEach(art => {
+                        if (typeof art.imgCount === 'undefined') art.imgCount = 1;
+                    });
                     console.log('Loaded artifacts from JSONBin:', artifacts.length);
                 } else {
                     console.log('Bin is empty, initializing with defaults');
@@ -651,7 +684,6 @@
 
         // Show save notification
         function showSaveNotification(success, errorMsg = '') {
-            // Create notification element if it doesn't exist
             let notification = document.getElementById('save-notification');
             if (!notification) {
                 notification = document.createElement('div');
@@ -718,6 +750,11 @@
                         if (currentData !== newData) {
                             console.log('Auto-sync: Updating with new data from cloud');
                             artifacts = data.artifacts;
+                            // Ensure defaults
+                            artifacts.forEach(art => {
+                                if (typeof art.imgCount === 'undefined') art.imgCount = 1;
+                            });
+
                             if (data.history) {
                                 historyLog = data.history;
                             }
@@ -761,7 +798,7 @@
         function renderCards() {
             stage.innerHTML = '';
             dotsContainer.innerHTML = '';
-            
+
             artifacts.forEach((art, index) => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -789,18 +826,18 @@
         function updateGallery() {
             const cards = document.querySelectorAll('.card');
             const dots = document.querySelectorAll('.dot');
-            
+
             cards.forEach((card, i) => {
                 const art = artifacts[i];
                 card.querySelector('.card-title').innerText = art.name;
                 card.querySelector('.card-image img').src = art.img;
                 card.querySelector('.card-desc').innerText = art.desc;
                 card.querySelector('.card-subtitle').innerText = `ORIGIN: ${art.origin}`;
-                
+
                 // Position Logic
                 card.className = 'card';
                 const diff = i - currentIndex;
-                
+
                 if (diff === 0) {
                     card.classList.add('active');
                     card.style.transform = 'translateX(0) scale(1.1) translateZ(100px)';
@@ -824,7 +861,7 @@
 
             dots.forEach((d, i) => d.classList.toggle('active', i === currentIndex));
             nameDisplay.innerText = `OBJECT ${artifacts[currentIndex].owner}`;
-            
+
             const adminSelect = document.getElementById('admin-select');
             if(adminSelect && document.getElementById('admin-panel').classList.contains('visible')) {
                 adminSelect.value = currentIndex;
@@ -847,13 +884,97 @@
             updateGallery();
         }
 
+        // --- DETAIL RECORD VIEW (With Multi-Image Support) ---
+
+        function getDetailImageUrl(basePath, index) {
+            if (index === 0) return basePath;
+
+            // Logic: image.png -> image_1.png
+            const dotIndex = basePath.lastIndexOf('.');
+            if (dotIndex === -1) return basePath; // Fail safe
+
+            const name = basePath.substring(0, dotIndex);
+            const ext = basePath.substring(dotIndex);
+
+            return `${name}_${index}${ext}`;
+        }
+
+        function updateDetailImage() {
+            const data = artifacts[currentIndex];
+            const imgEl = document.getElementById('det-img');
+            const nextBtn = document.getElementById('det-img-next');
+            const prevBtn = document.getElementById('det-img-prev');
+
+            // Fade out slightly
+            imgEl.style.opacity = '0.5';
+
+            setTimeout(() => {
+                imgEl.src = getDetailImageUrl(data.img, currentDetailImageIndex);
+                imgEl.onload = () => imgEl.style.opacity = '1';
+                // Fallback handled by onerror below
+            }, 100);
+
+            // Handle Button Visibility
+            if (data.imgCount && data.imgCount > 1) {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                prevBtn.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            }
+        }
+
+        function nextDetailImg() {
+            const data = artifacts[currentIndex];
+            const max = (data.imgCount || 1) - 1;
+            if (currentDetailImageIndex < max) {
+                currentDetailImageIndex++;
+            } else {
+                currentDetailImageIndex = 0; // Loop back to start
+            }
+            updateDetailImage();
+        }
+
+        function prevDetailImg() {
+            const data = artifacts[currentIndex];
+            const max = (data.imgCount || 1) - 1;
+            if (currentDetailImageIndex > 0) {
+                currentDetailImageIndex--;
+            } else {
+                currentDetailImageIndex = max; // Loop to end
+            }
+            updateDetailImage();
+        }
+
         function openRecord(index) {
             const data = artifacts[index];
+            currentDetailImageIndex = 0; // Reset to primary image
+
             document.getElementById('det-id').innerText = `${data.id} · ${data.name.toUpperCase()}`;
+
+            // Setup Image with Fallback
             const imgEl = document.getElementById('det-img');
             imgEl.src = data.img;
-            imgEl.onerror = function() { this.src = 'https://images.unsplash.com/photo-1550625655-b46187b5a5c6?w=600&fit=crop'; };
-            
+            imgEl.onerror = function() {
+                // Only replace with placeholder if it's the base image or we want generic placeholders
+                if(currentDetailImageIndex === 0) {
+                    this.src = 'https://images.unsplash.com/photo-1550625655-b46187b5a5c6?w=600&fit=crop';
+                }
+            };
+            imgEl.style.opacity = '1';
+
+            // Setup Buttons
+            const nextBtn = document.getElementById('det-img-next');
+            const prevBtn = document.getElementById('det-img-prev');
+
+            if (data.imgCount && data.imgCount > 1) {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                prevBtn.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            }
+
             document.getElementById('det-title').innerText = data.name;
             document.getElementById('det-origin').innerText = data.origin;
             document.getElementById('det-era').innerText = data.era;
@@ -868,6 +989,10 @@
         document.getElementById('btn-prev').addEventListener('click', prevObj);
         document.getElementById('btn-close').addEventListener('click', () => modal.classList.remove('active'));
 
+        // Image Nav Listeners
+        document.getElementById('det-img-next').addEventListener('click', nextDetailImg);
+        document.getElementById('det-img-prev').addEventListener('click', prevDetailImg);
+
         document.addEventListener('keydown', (e) => {
             // ADMIN TOGGLE: Ctrl + Shift + X
             if (e.ctrlKey && e.shiftKey && e.key === 'X') {
@@ -875,7 +1000,15 @@
                 fillAdminInputs(); // Refresh inputs when opening
             }
 
-            if (modal.classList.contains('active')) { if (e.key === 'Escape') modal.classList.remove('active'); return; }
+            if (modal.classList.contains('active')) {
+                if (e.key === 'Escape') modal.classList.remove('active');
+                // Enable arrow keys for inner image nav if modal is open
+                if (e.key === 'ArrowRight') nextDetailImg();
+                if (e.key === 'ArrowLeft') prevDetailImg();
+                return;
+            }
+
+            // Gallery Nav
             if (e.key === 'ArrowRight') nextObj();
             if (e.key === 'ArrowLeft') prevObj();
             if (e.key === 'Enter') openRecord(currentIndex);
@@ -890,11 +1023,12 @@
         // --- ADMIN SYSTEM ---
         function setupAdmin() {
             const select = document.getElementById('admin-select');
-            
+
             // Input Elements
             const inputs = {
                 name: document.getElementById('admin-name'),
                 img: document.getElementById('admin-img'),
+                imgCount: document.getElementById('admin-img-count'), // New
                 origin: document.getElementById('admin-origin'),
                 era: document.getElementById('admin-era'),
                 material: document.getElementById('admin-mat'),
@@ -931,6 +1065,7 @@
                     if(key === 'mat') artifacts[i].material = input.value;
                     else if(key === 'cond') artifacts[i].condition = input.value;
                     else if(key === 'note') artifacts[i].note = input.value;
+                    else if(key === 'imgCount') artifacts[i].imgCount = parseInt(input.value);
                     else artifacts[i][key] = input.value; // name, img, origin, era, desc
 
                     // Mark as having unsaved changes
@@ -987,6 +1122,7 @@
             document.getElementById('admin-select').value = currentIndex;
             document.getElementById('admin-name').value = art.name;
             document.getElementById('admin-img').value = art.img;
+            document.getElementById('admin-img-count').value = art.imgCount || 1; // New
             document.getElementById('admin-origin').value = art.origin;
             document.getElementById('admin-era').value = art.era;
             document.getElementById('admin-mat').value = art.material;
