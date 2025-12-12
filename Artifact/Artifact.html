@@ -508,6 +508,13 @@
                 note: "Found in a sealed crate marked 'Emergency Power'."
             },
             {
+                id: "OBJ-002-II", name: "Desalination Valve", owner: "Steven",
+                img: "OBJECT_Steven2.png", imgCount: 1,
+                origin: "Kitanzi Port", era: "11th Generation", material: "Copper, Salt Crystal", condition: "Non-functional",
+                desc: "A corroded intake valve from a manual desalination pump. The internal mechanism is completely fused by crystallized salt, rendering it useless for fluid transport.",
+                note: "Recovered from the lower decks of the sunken freighter."
+            },
+            {
                 id: "OBJ-003", name: "Pyrekeeper's Mask", owner: "Yuzie",
                 img: "OBJECT_Yuzie.png", imgCount: 1,
                 origin: "High Sanctuary", era: "Ritual Era", material: "Ceramic, Ash Glaze", condition: "Intact",
@@ -527,6 +534,13 @@
                 origin: "Industrial Zone 9", era: "Late Industrial", material: "Polymer, Aluminum", condition: "Sealed / Dented",
                 desc: "A hermetically sealed container. The contents are liquid, but scanning attempts have failed due to the lead lining.",
                 note: "Do not attempt to open without hazmat protocols."
+            },
+            {
+                id: "OBJ-005-II", name: "Geiger Needle", owner: "Jonny",
+                img: "OBJECT_Jonny2.png", imgCount: 1,
+                origin: "Industrial Zone 9", era: "Late Industrial", material: "Glass, Mercury", condition: "Cracked",
+                desc: "A delicate sensing component from a larger array. The glass housing is fractured, but the mercury switch inside remains suspended in a vacuum state.",
+                note: "Radiation readings spike when this object is shaken."
             },
             {
                 id: "OBJ-006", name: "Optical Prism", owner: "Isabel",
@@ -584,6 +598,53 @@
                     artifacts.forEach(art => {
                         if (typeof art.imgCount === 'undefined') art.imgCount = 1;
                     });
+
+                    // Merge new default artifacts that don't exist in cloud data
+                    let updated = false;
+                    defaultArtifacts.forEach(defaultArt => {
+                        const exists = artifacts.find(art => art.id === defaultArt.id);
+                        if (!exists) {
+                            console.log('Adding new artifact from defaults:', defaultArt.id);
+                            artifacts.push(JSON.parse(JSON.stringify(defaultArt)));
+                            updated = true;
+                        }
+                    });
+
+                    // Sort artifacts by ID to maintain correct order
+                    artifacts.sort((a, b) => {
+                        // Extract numeric part and roman numeral suffix
+                        const parseId = (id) => {
+                            const match = id.match(/OBJ-(\d+)(-[IVX]+)?/);
+                            if (!match) return { num: 999, suffix: '' };
+                            return {
+                                num: parseInt(match[1]),
+                                suffix: match[2] || ''
+                            };
+                        };
+
+                        const aId = parseId(a.id);
+                        const bId = parseId(b.id);
+
+                        // First sort by number
+                        if (aId.num !== bId.num) return aId.num - bId.num;
+
+                        // Then by suffix (empty string first, then roman numerals)
+                        if (aId.suffix === '' && bId.suffix !== '') return -1;
+                        if (aId.suffix !== '' && bId.suffix === '') return 1;
+                        return aId.suffix.localeCompare(bId.suffix);
+                    });
+
+                    // If new artifacts were added, save to cloud
+                    // Always save after sorting to ensure cloud has correct order
+                    if (updated) {
+                        console.log('New artifacts added, syncing to cloud...');
+                        await saveDataToJSONBin();
+                    } else {
+                        // Even if no new artifacts, save sorted order
+                        console.log('Updating artifact order in cloud...');
+                        await saveDataToJSONBin();
+                    }
+
                     console.log('Loaded artifacts from JSONBin:', artifacts.length);
                 } else {
                     console.log('Bin is empty, initializing with defaults');
