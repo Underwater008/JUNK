@@ -611,6 +611,122 @@
         body.edit-mode #journey-editor {
             display: block;
         }
+
+        /* Label Admin Mode */
+        #label-admin-panel {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            padding: 24px;
+            width: 320px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            display: none;
+            z-index: 900;
+        }
+        body.label-admin-mode #label-admin-panel {
+            display: block;
+        }
+        #label-admin-panel h4 {
+            margin: 0 0 20px 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .label-field {
+            margin-bottom: 16px;
+        }
+        .label-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .label-field input,
+        .label-field select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .label-field input:focus,
+        .label-field select:focus {
+            outline: none;
+            border-color: #6b4ce6;
+            box-shadow: 0 0 0 3px rgba(107, 76, 230, 0.1);
+        }
+        .label-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .label-actions button {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .label-actions button.primary {
+            background: #6b4ce6;
+            color: white;
+        }
+        .label-actions button.secondary {
+            background: #e0e7ff;
+            color: #312e81;
+        }
+        .label-actions button.danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .label-actions button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .label-hint {
+            margin-top: 12px;
+            font-size: 11px;
+            color: #64748b;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+        .map-label {
+            pointer-events: all;
+            cursor: move;
+            user-select: none;
+            color: #1a1a1a;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+            transition: color 0.2s;
+        }
+        body.label-admin-mode .map-label {
+            border: 1px dashed #6b4ce6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        body.label-admin-mode .map-label:hover {
+            background: rgba(107, 76, 230, 0.1);
+            border-color: #4c3cc0;
+        }
     </style>
 </head>
 <body>
@@ -737,6 +853,43 @@
         <div class="editor-hint">
             <span class="material-symbols-outlined">pan_tool_alt</span>
             Drag markers on the map while edit mode is on.
+        </div>
+    </div>
+
+    <!-- Label Admin Panel -->
+    <div id="label-admin-panel">
+        <h4>
+            <span class="material-symbols-outlined">text_fields</span>
+            Map Label Editor
+        </h4>
+        <div class="label-field">
+            <label>Label Text</label>
+            <input type="text" id="label-text" placeholder="Enter label text">
+        </div>
+        <div class="label-field">
+            <label>Font Size</label>
+            <select id="label-size">
+                <option value="12">Small (12px)</option>
+                <option value="14">Normal (14px)</option>
+                <option value="16" selected>Medium (16px)</option>
+                <option value="20">Large (20px)</option>
+                <option value="24">Extra Large (24px)</option>
+                <option value="32">Huge (32px)</option>
+                <option value="48">Giant (48px)</option>
+            </select>
+        </div>
+        <div class="label-field">
+            <label>Color</label>
+            <input type="color" id="label-color" value="#1a1a1a">
+        </div>
+        <div class="label-actions">
+            <button class="primary" id="add-label">Add Label</button>
+            <button class="danger" id="delete-label">Delete Selected</button>
+        </div>
+        <div class="label-hint">
+            <strong>Ctrl+Shift+X</strong> to toggle label mode<br>
+            Click on map to place new labels<br>
+            Drag labels to reposition them
         </div>
     </div>
 
@@ -906,12 +1059,9 @@
                 { id: 4, name: "Mist Valley", icon: "cloud", x: 5, z: 40, description: "A perpetually foggy valley hiding ancient secrets." }
             ],
             steven: [
-                { id: 1, name: "Salt Caves of Nane", icon: "layers", x: 30, z: -35, description: "Ancient salt caves discovered during Steven's expedition.", media: "Salt Caves of Nane.mp4" },
-                { id: 2, name: "Mtoni Energy Village", icon: "bolt", x: 45, z: -25, description: "The energy hub that powers the surrounding settlements.", media: "Mtoni Energy Village.mp4" },
-                { id: 3, name: "Signal Tower Ridge", icon: "cell_tower", x: 50, z: -10, description: "Communication tower overlooking the archipelago.", media: "Signal Tower Ridge.mp4" },
-                { id: 4, name: "The Night Crossing", icon: "nightlight", x: 35, z: -20, description: "The treacherous nighttime passage through the straits.", media: "The Night Crossing.mp4" },
-                { id: 5, name: "Kitanzi Harbor", icon: "anchor", x: 25, z: -30, description: "The bustling port and trading center.", media: "Kitanzi Harbor_1.mp4" },
-                { id: 6, name: "Kitanzi Harbor_2", icon: "sailing", x: 28, z: -32, description: "Alternative view of Kitanzi Harbor activities.", media: "Kitanzi Harbor_2.mp4" }
+                { id: 1, name: "Forge Workshop", icon: "hardware", x: 30, z: -35, description: "Steven rebuilt the old forge to craft tools for the community." },
+                { id: 2, name: "Scrap Yard", icon: "recycling", x: 45, z: -25, description: "A treasure trove of pre-collapse technology." },
+                { id: 3, name: "Wind Farm", icon: "air", x: 50, z: -10, description: "Steven restored three turbines to power the eastern settlements." }
             ],
             tiger: [
                 { id: 1, name: "Hunter's Blind", icon: "visibility", x: 20, z: 30, description: "Tiger's lookout point for tracking wildlife movements." },
@@ -1256,6 +1406,176 @@
         let journeySavedCameraPos = null;
         let journeySavedTarget = null;
         let currentJourneyIndex = 0;
+
+        // Label Admin Mode variables
+        let labelAdminMode = false;
+        let mapLabels = [];
+        let selectedLabel = null;
+        let draggingLabel = null;
+        let labelDragOffset = { x: 0, y: 0 };
+
+        // Load labels from localStorage
+        function loadLabels() {
+            const saved = localStorage.getItem('mapLabels');
+            if (saved) {
+                try {
+                    mapLabels = JSON.parse(saved);
+                    mapLabels.forEach(label => createLabelElement(label));
+                } catch (e) {
+                    console.error('Error loading labels:', e);
+                }
+            }
+        }
+
+        // Save labels to localStorage
+        function saveLabels() {
+            localStorage.setItem('mapLabels', JSON.stringify(mapLabels));
+        }
+
+        // Toggle label admin mode with Ctrl+Shift+X
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+                e.preventDefault();
+                labelAdminMode = !labelAdminMode;
+                document.body.classList.toggle('label-admin-mode', labelAdminMode);
+
+                if (labelAdminMode) {
+                    showNotification('Label Admin Mode Enabled', 'success');
+                } else {
+                    showNotification('Label Admin Mode Disabled', 'success');
+                    selectedLabel = null;
+                }
+            }
+        });
+
+        // Create label element
+        function createLabelElement(labelData) {
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'map-label';
+            labelDiv.textContent = labelData.text;
+            labelDiv.style.position = 'absolute';
+            labelDiv.style.left = labelData.x + 'px';
+            labelDiv.style.top = labelData.y + 'px';
+            labelDiv.style.fontSize = labelData.size + 'px';
+            labelDiv.style.color = labelData.color;
+            labelDiv.dataset.labelId = labelData.id;
+
+            // Make draggable in admin mode
+            labelDiv.addEventListener('mousedown', (e) => {
+                if (!labelAdminMode) return;
+                e.stopPropagation();
+                selectedLabel = labelData;
+                draggingLabel = labelData;
+                labelDragOffset.x = e.clientX - labelData.x;
+                labelDragOffset.y = e.clientY - labelData.y;
+
+                // Highlight selected
+                document.querySelectorAll('.map-label').forEach(l => l.style.outline = '');
+                labelDiv.style.outline = '2px solid #6b4ce6';
+            });
+
+            document.body.appendChild(labelDiv);
+            return labelDiv;
+        }
+
+        // Handle label dragging
+        document.addEventListener('mousemove', (e) => {
+            if (draggingLabel && labelAdminMode) {
+                const newX = e.clientX - labelDragOffset.x;
+                const newY = e.clientY - labelDragOffset.y;
+
+                draggingLabel.x = newX;
+                draggingLabel.y = newY;
+
+                const labelEl = document.querySelector(`[data-label-id="${draggingLabel.id}"]`);
+                if (labelEl) {
+                    labelEl.style.left = newX + 'px';
+                    labelEl.style.top = newY + 'px';
+                }
+
+                saveLabels();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            draggingLabel = null;
+        });
+
+        // Add label button
+        document.getElementById('add-label').addEventListener('click', () => {
+            const text = document.getElementById('label-text').value.trim();
+            if (!text) {
+                showNotification('Please enter label text', 'error');
+                return;
+            }
+
+            const size = parseInt(document.getElementById('label-size').value);
+            const color = document.getElementById('label-color').value;
+
+            const label = {
+                id: Date.now(),
+                text: text,
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+                size: size,
+                color: color
+            };
+
+            mapLabels.push(label);
+            createLabelElement(label);
+            saveLabels();
+
+            document.getElementById('label-text').value = '';
+            showNotification('Label added', 'success');
+        });
+
+        // Delete label button
+        document.getElementById('delete-label').addEventListener('click', () => {
+            if (!selectedLabel) {
+                showNotification('No label selected', 'error');
+                return;
+            }
+
+            const labelEl = document.querySelector(`[data-label-id="${selectedLabel.id}"]`);
+            if (labelEl) {
+                labelEl.remove();
+            }
+
+            mapLabels = mapLabels.filter(l => l.id !== selectedLabel.id);
+            saveLabels();
+            selectedLabel = null;
+            showNotification('Label deleted', 'success');
+        });
+
+        // Place label on map click in admin mode
+        document.addEventListener('click', (e) => {
+            if (!labelAdminMode) return;
+
+            // Check if click is on canvas or body (not on UI elements)
+            if (e.target.tagName === 'CANVAS' || e.target.tagName === 'BODY') {
+                const text = document.getElementById('label-text').value.trim();
+                if (!text) return;
+
+                const size = parseInt(document.getElementById('label-size').value);
+                const color = document.getElementById('label-color').value;
+
+                const label = {
+                    id: Date.now(),
+                    text: text,
+                    x: e.clientX,
+                    y: e.clientY,
+                    size: size,
+                    color: color
+                };
+
+                mapLabels.push(label);
+                createLabelElement(label);
+                saveLabels();
+
+                document.getElementById('label-text').value = '';
+                showNotification('Label placed', 'success');
+            }
+        });
 
         function init() {
             // Scene
@@ -1697,6 +2017,9 @@
             // Load saved journeys
             await loadJourneyData();
             journeyPoints = buildJourneyPoints(selectedPersonName);
+
+            // Load saved labels
+            loadLabels();
 
             // Start auto-sync to get updates from other users
             startAutoSync();
