@@ -215,7 +215,7 @@
         .gallery-info p {
             margin: 0;
             font-size: 16px;
-            color: rgba(255, 255, 255, 0.7);
+            color: white;
             line-height: 1.5;
         }
         .gallery-dots {
@@ -744,9 +744,9 @@
             pointer-events: all;
             cursor: pointer;
             user-select: none;
-            color: #1a1a1a;
+            color: white;
             font-weight: 600;
-            text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
             transition: color 0.2s;
         }
         body.label-admin-mode .map-label {
@@ -1149,7 +1149,7 @@
         </div>
         <div class="label-field">
             <label>Color</label>
-            <input type="color" id="label-color" value="#1a1a1a">
+            <input type="color" id="label-color" value="#ffffff">
         </div>
         <div class="label-actions">
             <button class="primary" id="add-label">Add Label</button>
@@ -1859,7 +1859,7 @@
             labelDiv.className = 'map-label';
             labelDiv.textContent = labelData.text;
             labelDiv.style.fontSize = labelData.size + 'px';
-            labelDiv.style.color = labelData.color;
+            labelDiv.style.color = '#ffffff';
             labelDiv.dataset.labelId = labelData.id;
 
             // Make clickable and draggable in admin mode
@@ -4054,6 +4054,31 @@
             }
 
             setJourneySelection('all');
+
+            // Reset camera to intro animation end position
+            const targetPos = new THREE.Vector3(cameraEndPos.x, cameraEndPos.y, cameraEndPos.z);
+            const targetLookAt = new THREE.Vector3(0, 0, 0);
+            const startPos = camera.position.clone();
+            const startTarget = controls.target.clone();
+
+            let progress = 0;
+            const animateCameraReset = () => {
+                progress += 0.02;
+                if (progress >= 1) {
+                    progress = 1;
+                }
+
+                const eased = 1 - Math.pow(1 - progress, 3);
+                camera.position.lerpVectors(startPos, targetPos, eased);
+                controls.target.lerpVectors(startTarget, targetLookAt, eased);
+                camera.lookAt(controls.target);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateCameraReset);
+                }
+            };
+
+            animateCameraReset();
         };
     </script>
 </body>
