@@ -3218,13 +3218,31 @@
             });
         }
 
+        // Track camera movement for collision detection
+        let lastCameraPos = new THREE.Vector3();
+        let lastCameraTarget = new THREE.Vector3();
+        let cameraIsMoving = false;
+        let journeyJustBecameVisible = false;
+
         // Animate journey elements
         function animateJourney() {
             const time = Date.now() * 0.001;
 
-            // Collect label rects for collision detection (only for individual view)
+            // Check if camera is moving
+            const cameraMoved = !camera.position.equals(lastCameraPos) || !controls.target.equals(lastCameraTarget);
+            if (cameraMoved) {
+                cameraIsMoving = true;
+                lastCameraPos.copy(camera.position);
+                lastCameraTarget.copy(controls.target);
+            } else {
+                cameraIsMoving = false;
+            }
+
+            // Collect label rects for collision detection (only for individual view AND when camera moves or just became visible)
             const labelRects = [];
-            const doCollisionDetection = currentPerson && currentPerson !== 'all';
+            const shouldRunCollision = cameraIsMoving || journeyJustBecameVisible;
+            const doCollisionDetection = currentPerson && currentPerson !== 'all' && shouldRunCollision;
+            journeyJustBecameVisible = false; // Reset flag after use
 
             journeyMarkers.forEach((marker, index) => {
                 // Pulse effect on rings
@@ -3863,9 +3881,16 @@
                 return false;
             }
 
+            // Don't save if nothing was edited
+            if (editedPersons.size === 0) {
+                console.log('No edits to save');
+                return true;
+            }
+
             lastJourneySaveTime = Date.now();
             try {
-                let existingRecord = {};
+                // MUST fetch existing data first - abort if this fails
+                let existingRecord = null;
                 try {
                     const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
                         method: 'GET',
@@ -3878,7 +3903,13 @@
                         existingRecord = result.record || {};
                     }
                 } catch (e) {
-                    console.warn('Could not fetch existing journeys, saving anyway', e);
+                    console.error('Could not fetch existing journeys', e);
+                }
+
+                // CRITICAL: If we couldn't fetch existing data, abort save to prevent data loss
+                if (existingRecord === null) {
+                    showNotification(false, 'Cannot save - failed to fetch current data');
+                    return false;
                 }
 
                 // Merge: start with remote journeys, then overlay ONLY the persons that were edited
@@ -3887,13 +3918,15 @@
 
                 // Only update persons that were actually edited this session
                 const mergedJourneys = { ...remoteJourneys };
+                const editedList = Array.from(editedPersons);
+                console.log('Saving only edited persons:', editedList);
                 editedPersons.forEach(person => {
                     if (localJourneys[person]) {
                         mergedJourneys[person] = localJourneys[person];
+                        console.log(`  - Updated ${person}: ${localJourneys[person].length} points`);
                     }
                 });
 
-                // Clear the edited set after successful merge
                 const nextBody = { ...existingRecord, journeys: mergedJourneys };
                 const response = await fetch(JSONBIN_URL, {
                     method: 'PUT',
@@ -4079,6 +4112,7 @@
                 if (heightImageData) {
                     clearJourneySystem();
                     createJourneySystem(heightImageData, heightW, heightH);
+                    journeyJustBecameVisible = true; // Trigger collision detection on first display
                 }
             }
         }
