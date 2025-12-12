@@ -184,16 +184,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            max-width: 90vw;
-            max-height: 70vh;
+            max-width: 95vw;
+            max-height: 75vh;
             border-radius: 12px;
             overflow: hidden;
             background: linear-gradient(135deg, #e8eaf6 0%, #f3e5f5 100%);
         }
         .gallery-media img,
         .gallery-media video {
-            max-width: 90vw;
-            max-height: 70vh;
+            max-width: 95vw;
+            max-height: 75vh;
             object-fit: contain;
             border-radius: 12px;
         }
@@ -205,16 +205,17 @@
         .gallery-info {
             text-align: center;
             color: white;
-            max-width: 600px;
+            max-width: 800px;
+            width: 90vw;
         }
         .gallery-info h2 {
             margin: 0 0 8px 0;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 600;
         }
         .gallery-info p {
             margin: 0;
-            font-size: 16px;
+            font-size: 14px;
             color: white;
             line-height: 1.5;
         }
@@ -3318,18 +3319,41 @@
                 placeholder.innerHTML = `<img src="${rawMedia}" alt="${point.name}">`;
             } else if (mediaType === 'embed') {
                 // Render embed code directly (iframe/div snippets from Vimeo, etc.)
-                // Strip script tags as they won't execute via innerHTML
-                const cleanEmbed = rawMedia.replace(/<script[^>]*>.*?<\/script>/gi, '');
-                placeholder.innerHTML = `<div style="width:80vw;max-width:800px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;">${cleanEmbed}</div>`;
-                // Fix any nested iframe to fill the container
-                const iframe = placeholder.querySelector('iframe');
-                if (iframe) {
-                    iframe.style.cssText = 'width:100%;height:100%;border:0;';
-                }
-                // Remove the wrapper div from Vimeo embed if present
-                const innerDiv = placeholder.querySelector('.gallery-media > div > div');
-                if (innerDiv && innerDiv.style.padding) {
-                    innerDiv.style.cssText = 'width:100%;height:100%;position:relative;';
+                // Use exact CSS trick from CodePen to hide controls
+                const wrapperId = 'vimeo-wrapper-' + Date.now();
+                // .top: padding-bottom:56.25%, height:0, overflow:hidden, position:relative
+                // .wrapper: position:relative, padding-bottom:200%, transform:translateY(-35.95%)
+                // iframe: position:absolute, top:0, left:0, width:100%, height:100%
+                placeholder.innerHTML = `
+                    <div id="${wrapperId}" style="padding-bottom:56.25%;height:0;overflow:hidden;position:relative;width:80vw;max-width:800px;border-radius:12px;">
+                        <div class="vimeo-wrapper" style="position:relative;padding-bottom:200%;transform:translateY(-35.95%);">
+                        </div>
+                    </div>`;
+
+                const wrapper = document.getElementById(wrapperId);
+                const innerWrapper = wrapper.querySelector('.vimeo-wrapper');
+
+                // Extract iframe src from the embed code
+                const srcMatch = rawMedia.match(/src=["']([^"']+)["']/i);
+                if (srcMatch && srcMatch[1].includes('vimeo.com')) {
+                    let src = srcMatch[1];
+                    // Clean and rebuild URL - match CodePen exactly
+                    src = src.replace(/[&?]title=\d/gi, '');
+                    src = src.replace(/[&?]byline=\d/gi, '');
+                    src = src.replace(/[&?]portrait=\d/gi, '');
+                    const separator = src.includes('?') ? '&' : '?';
+                    src += `${separator}title=0&byline=0&portrait=0&transparent=0&autoplay=1&muted=1`;
+
+                    // Create iframe
+                    const iframe = document.createElement('iframe');
+                    iframe.src = src;
+                    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;';
+                    iframe.setAttribute('frameborder', '0');
+                    iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+                    iframe.setAttribute('allowfullscreen', '');
+                    iframe.setAttribute('webkitallowfullscreen', '');
+                    iframe.setAttribute('mozallowfullscreen', '');
+                    innerWrapper.appendChild(iframe);
                 }
             } else if (mediaType === 'video') {
                 placeholder.innerHTML = `<video controls><source src="${rawMedia}" type="video/mp4">Your browser does not support video.</video>`;
@@ -3455,6 +3479,18 @@
         window.closeMediaPopup = function() {
             const popup = document.getElementById('media-popup');
             popup.classList.remove('visible');
+
+            // Stop any playing videos or iframes
+            const placeholder = document.getElementById('media-placeholder');
+            const video = placeholder.querySelector('video');
+            if (video) {
+                video.pause();
+                video.currentTime = 0;
+            }
+            const iframe = placeholder.querySelector('iframe');
+            if (iframe) {
+                iframe.src = iframe.src; // Reset iframe to stop playback
+            }
 
             // Remove keyboard listener
             document.removeEventListener('keydown', handleGalleryKeydown);
