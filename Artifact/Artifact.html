@@ -555,13 +555,6 @@
                 origin: "The Deep Mines", era: "Unknown", material: "Resin, Gold Flake", condition: "Pristine",
                 desc: "A perfect geometric cube of fossilized resin. Suspended inside is a data chip from the Old World.",
                 note: "The chip is visible but inaccessible."
-            },
-            {
-                id: "OBJ-008", name: "Signal Flare", owner: "Tiger",
-                img: "OBJECT_Tiger.png", imgCount: 1,
-                origin: "Coastal Outpost", era: "Reclamation Era", material: "Phosphorus, Cardboard", condition: "Unspent",
-                desc: "Standard issue distress signal. The chemical compound has likely degraded, making ignition unstable.",
-                note: "Found in a watertight survival kit."
             }
         ];
 
@@ -599,8 +592,13 @@
                         if (typeof art.imgCount === 'undefined') art.imgCount = 1;
                     });
 
+                    // Remove artifacts that no longer exist in defaults
+                    const defaultIds = defaultArtifacts.map(art => art.id);
+                    const originalLength = artifacts.length;
+                    artifacts = artifacts.filter(art => defaultIds.includes(art.id));
+                    let updated = artifacts.length !== originalLength;
+
                     // Merge new default artifacts that don't exist in cloud data
-                    let updated = false;
                     defaultArtifacts.forEach(defaultArt => {
                         const exists = artifacts.find(art => art.id === defaultArt.id);
                         if (!exists) {
