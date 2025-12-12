@@ -339,6 +339,21 @@
             transform: translateY(-4px);
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
         }
+        .site-title {
+            font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
         .journey-nav-item {
             display: flex;
             align-items: center;
@@ -790,6 +805,7 @@
 
     <!-- Top Navigation (Right Side) -->
     <nav id="top-nav">
+        <div class="site-title">ARCHIPELAGO</div>
         <div class="journey-nav-item selected" id="overview-btn" onclick="showOverview()">
             <div class="nav-dot" style="background: #888;"></div>
             <span class="nav-name">OVERVIEW</span>
