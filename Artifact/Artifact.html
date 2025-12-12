@@ -721,52 +721,6 @@
             }, 3000);
         }
 
-        // Auto-sync: Poll for updates every 5 seconds
-        function startAutoSync() {
-            setInterval(async () => {
-                // Skip if we just saved (avoid overwriting our own changes)
-                if (Date.now() - lastSaveTime < 10000) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${JSONBIN_URL}/latest`, {
-                        method: 'GET',
-                        headers: {
-                            'X-Master-Key': JSONBIN_API_KEY
-                        }
-                    });
-
-                    if (!response.ok) return;
-
-                    const result = await response.json();
-                    const data = result.record;
-
-                    if (data && data.artifacts) {
-                        // Check if data has changed
-                        const currentData = JSON.stringify(artifacts);
-                        const newData = JSON.stringify(data.artifacts);
-
-                        if (currentData !== newData) {
-                            console.log('Auto-sync: Updating with new data from cloud');
-                            artifacts = data.artifacts;
-                            // Ensure defaults
-                            artifacts.forEach(art => {
-                                if (typeof art.imgCount === 'undefined') art.imgCount = 1;
-                            });
-
-                            if (data.history) {
-                                historyLog = data.history;
-                            }
-                            updateGallery();
-                            renderHistory();
-                        }
-                    }
-                } catch (e) {
-                    // Silently fail - don't spam console
-                }
-            }, 5000); // Check every 5 seconds
-        }
 
         function renderHistory() {
             const container = document.getElementById('admin-history-log');
@@ -792,7 +746,6 @@
             updateGallery();
             setupAdmin();
             renderHistory();
-            startAutoSync(); // Start polling for updates
         }
 
         function renderCards() {
