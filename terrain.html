@@ -1276,6 +1276,7 @@
         let lastJourneySaveTime = 0;
         let editMode = false;
         let editingPoint = null;
+        let editedPersons = new Set(); // Track which persons have been edited this session
         let draggingJourneyMarker = null;
         // Mobile detection
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1421,10 +1422,10 @@
                 { id: 2, name: "Data Archive", icon: "storage", x: 10, z: 0, description: "A server room Xiao worked to restore and preserve." }
             ],
             lillith: [
-                { id: 1, name: "Apothecary", icon: "medication", x: -35, z: -5, description: "Lillith established a clinic to heal the wounded." },
+                { id: 1, name: "Apothecary", icon: "medication", x: -35, z: -5, description: "Lilleth established a clinic to heal the wounded." },
                 { id: 2, name: "Herb Garden", icon: "spa", x: -25, z: 5, description: "A carefully cultivated garden of medicinal plants." },
                 { id: 3, name: "Hot Springs", icon: "hot_tub", x: -15, z: 15, description: "Natural springs with therapeutic properties." },
-                { id: 4, name: "Sanctuary", icon: "temple_buddhist", x: -5, z: 25, description: "A place of rest and healing that Lillith built." }
+                { id: 4, name: "Sanctuary", icon: "temple_buddhist", x: -5, z: 25, description: "A place of rest and healing that Lilleth built." }
             ],
             yuzie: [
                 { id: 1, name: "Farmer's Market", icon: "storefront", x: 0, z: -25, description: "Yuzie organized the first post-collapse trade fair here." },
@@ -1629,6 +1630,7 @@
             setEditingPoint(newPoint);
             journeysVisible = true;
             selectedPersonName = targetPerson;
+            editedPersons.add(targetPerson); // Track that this person was edited
             setJourneySelection(targetPerson);
         }
 
@@ -1658,6 +1660,7 @@
 
             renumberPersonJourneys(targetPerson);
             setJourneySelection(targetPerson);
+            editedPersons.add(targetPerson); // Track that this person was edited
             lastJourneySaveTime = Date.now();
         }
 
@@ -1670,6 +1673,7 @@
                 list.splice(idx, 1);
             }
             renumberPersonJourneys(person);
+            editedPersons.add(person); // Track that this person was edited
             const nextPoint = (allJourneys[person] || [])[0] || null;
             editingPoint = null;
             populateEditorFields(nextPoint);
@@ -3821,6 +3825,8 @@
             }, 2000);
         }
 
+        let journeyLoadSuccess = false; // Track if we successfully loaded from JSONBin
+
         async function loadJourneyData() {
             try {
                 const response = await fetch(`${JSONBIN_URL}/latest`, {
@@ -3834,6 +3840,7 @@
                     const result = await response.json();
                     const remoteJourneys = result.record?.journeys;
                     allJourneys = normalizeJourneyData(remoteJourneys);
+                    journeyLoadSuccess = true;
                     if (journeysVisible) {
                         journeyPoints = buildJourneyPoints(selectedPersonName);
                         rebuildJourneySystem();
@@ -3841,13 +3848,21 @@
                     return;
                 }
             } catch (e) {
-                console.warn('Failed to load journeys from JSONBin, using defaults', e);
+                console.error('Failed to load journeys from JSONBin', e);
             }
 
-            allJourneys = normalizeJourneyData(allJourneys);
+            // Load failed - do NOT use defaults, show error
+            journeyLoadSuccess = false;
+            showNotification(false, 'Failed to load journeys - edits disabled');
         }
 
         async function saveJourneysToBin() {
+            // Prevent saving if initial load failed (would overwrite with defaults)
+            if (!journeyLoadSuccess) {
+                showNotification(false, 'Cannot save - initial load failed');
+                return false;
+            }
+
             lastJourneySaveTime = Date.now();
             try {
                 let existingRecord = {};
@@ -3866,8 +3881,20 @@
                     console.warn('Could not fetch existing journeys, saving anyway', e);
                 }
 
-                const sanitizedJourneys = normalizeJourneyData(allJourneys);
-                const nextBody = { ...existingRecord, journeys: sanitizedJourneys };
+                // Merge: start with remote journeys, then overlay ONLY the persons that were edited
+                const remoteJourneys = existingRecord.journeys || {};
+                const localJourneys = normalizeJourneyData(allJourneys);
+
+                // Only update persons that were actually edited this session
+                const mergedJourneys = { ...remoteJourneys };
+                editedPersons.forEach(person => {
+                    if (localJourneys[person]) {
+                        mergedJourneys[person] = localJourneys[person];
+                    }
+                });
+
+                // Clear the edited set after successful merge
+                const nextBody = { ...existingRecord, journeys: mergedJourneys };
                 const response = await fetch(JSONBIN_URL, {
                     method: 'PUT',
                     headers: {
@@ -3883,6 +3910,9 @@
                 }
 
                 await response.json();
+                // Update local state with merged data and clear edited tracking
+                allJourneys = normalizeJourneyData(mergedJourneys);
+                editedPersons.clear();
                 showNotification(true, 'Journeys synced');
                 return true;
             } catch (error) {
