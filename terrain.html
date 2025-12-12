@@ -2193,9 +2193,6 @@
             // Setup label click handler
             setupLabelClickHandler();
 
-            // Start auto-sync to get updates from other users
-            startAutoSync();
-
             // Start with overview (no journey points)
             showOverview();
         }
@@ -2968,27 +2965,6 @@
             }
         }
 
-        function startAutoSync() {
-            // Poll for updates every 5 seconds
-            setInterval(async () => {
-                if (Date.now() - lastJourneySaveTime < 10000) return;
-                if (editMode) return;
-
-                try {
-                    const response = await fetch(`${JSONBIN_URL}/latest`, {
-                        method: 'GET',
-                        headers: { 'X-Master-Key': JSONBIN_API_KEY }
-                    });
-
-                    if (!response.ok) return;
-                    const result = await response.json();
-                    const remoteJourneys = result.record?.journeys || {};
-                    syncJourneysFromRemote(remoteJourneys);
-                } catch (e) {
-                    // Silently fail - don't spam console with sync errors
-                }
-            }, 5000); // Sync every 5 seconds
-        }
         function onMouseClick(event) {
             if (cameraIntroPlaying) return; // Don't allow clicks during intro
             if (isDragging) return; // Don't allow selection if dragging
