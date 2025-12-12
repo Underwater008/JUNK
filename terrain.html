@@ -1557,44 +1557,46 @@
             showNotification({ message: 'Label deleted', type: 'success' });
         });
 
-        // Place label on map click in admin mode
-        renderer.domElement.addEventListener('click', (e) => {
-            if (!labelAdminMode) return;
+        // Setup label click handler - called after renderer is created
+        function setupLabelClickHandler() {
+            renderer.domElement.addEventListener('click', (e) => {
+                if (!labelAdminMode) return;
 
-            const text = document.getElementById('label-text').value.trim();
-            if (!text) return;
+                const text = document.getElementById('label-text').value.trim();
+                if (!text) return;
 
-            // Calculate mouse position in normalized device coordinates
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                // Calculate mouse position in normalized device coordinates
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(terrainMesh);
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(terrainMesh);
 
-            if (intersects.length > 0) {
-                const point = intersects[0].point;
-                const size = parseInt(document.getElementById('label-size').value);
-                const color = document.getElementById('label-color').value;
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const size = parseInt(document.getElementById('label-size').value);
+                    const color = document.getElementById('label-color').value;
 
-                const label = {
-                    id: Date.now(),
-                    text: text,
-                    worldX: point.x,
-                    worldY: point.y + 2,
-                    worldZ: point.z,
-                    size: size,
-                    color: color
-                };
+                    const label = {
+                        id: Date.now(),
+                        text: text,
+                        worldX: point.x,
+                        worldY: point.y + 2,
+                        worldZ: point.z,
+                        size: size,
+                        color: color
+                    };
 
-                mapLabels.push(label);
-                create3DLabel(label);
-                saveLabels();
+                    mapLabels.push(label);
+                    create3DLabel(label);
+                    saveLabels();
 
-                document.getElementById('label-text').value = '';
-                showNotification({ message: 'Label placed on terrain', type: 'success' });
-            }
-        });
+                    document.getElementById('label-text').value = '';
+                    showNotification({ message: 'Label placed on terrain', type: 'success' });
+                }
+            });
+        }
 
         function init() {
             // Scene
@@ -2039,6 +2041,9 @@
 
             // Load saved labels
             loadLabels();
+
+            // Setup label click handler
+            setupLabelClickHandler();
 
             // Start auto-sync to get updates from other users
             startAutoSync();
