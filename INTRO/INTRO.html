@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JUNK: ARCHIVE 2325</title>
+    <style>
+        /* --- RESET & VARIABLES --- */
+        :root {
+            --phosphor-main: #afbea2; /* Old Terminal Green/Grey */
+            --phosphor-bright: #d4e0c8;
+            --phosphor-dim: #4a5a42;
+            --alert: #ff4646;         /* War/Danger */
+            --void: #0a0a0a;          /* Deep Dark Background */
+            
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
+
+        body {
+            background-color: var(--void);
+            color: var(--phosphor-main);
+            font-family: var(--font-mono);
+            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+            font-size: 14px;
+        }
+
+        /* --- CRT FX LAYER (The "Screen") --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            100% { opacity: 0.97; }
+        }
+
+        /* --- LAYOUT GRID --- */
+        .interface-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100vh;
+            width: 100vw;
+            padding: 15px;
+            gap: 10px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- HEADER --- */
+        header {
+            grid-column: 1 / 4;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--phosphor-dim);
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding-bottom: 10px;
+        }
+
+        .blink { animation: blinker 2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* --- SIDEBARS --- */
+        .sidebar-left, .sidebar-right {
+            display: flex;
+            flex-direction: column;
+            font-size: 11px;
+            line-height: 1.6;
+            color: var(--phosphor-dim);
+            justify-content: space-between;
+            padding: 20px 0;
+        }
+        .sidebar-right { text-align: right; }
+
+        /* --- CENTRAL VIEWPORT --- */
+        .viewport {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            position: relative;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            border: 1px solid var(--phosphor-dim);
+            background: rgba(0,0,0,0.3);
+            
+            /* Hide Scrollbar aesthetics */
+            scrollbar-width: thin;
+            scrollbar-color: var(--phosphor-dim) var(--void);
+        }
+
+        /* --- RADIAL MENU (HOME) --- */
+        .radial-system-container {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        /* State: Active Content (Menu moves away) */
+        .interface-grid.active-content .radial-system-container {
+            top: 90%;
+            left: 90%;
+            transform: translate(-50%, -50%) scale(0.25);
+            opacity: 0.4;
+            pointer-events: none; /* Disable clicks when minimized */
+        }
+
+        .radar-circle {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            border: 1px solid var(--phosphor-dim);
+            border-radius: 50%;
+            animation: rotate-slow 120s linear infinite;
+        }
+
+        .axis-line {
+            position: absolute;
+            top: 0; left: 50%;
+            width: 1px; height: 100%;
+            background: var(--phosphor-dim);
+        }
+
+        /* --- UPDATED LOGO SIZE --- */
+        .center-logo {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px; /* Doubled from 200px */
+            height: auto;
+            z-index: 25;
+            filter: drop-shadow(0 0 10px var(--phosphor-dim));
+            opacity: 0.9;
+        }
+
+        .node-btn {
+            position: absolute;
+            width: 110px;
+            padding: 8px 0;
+            background: var(--void);
+            border: 1px solid var(--phosphor-main);
+            color: var(--phosphor-main);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-transform: uppercase;
+            transition: 0.3s;
+            z-index: 30;
+            text-align: center;
+        }
+
+        .node-btn span { font-size: 9px; color: var(--phosphor-dim); margin-top: 2px; }
+
+        .node-btn:hover {
+            background: var(--phosphor-main);
+            color: var(--void);
+            box-shadow: 0 0 20px var(--phosphor-main);
+            border-color: var(--phosphor-bright);
+            cursor: pointer;
+        }
+        .node-btn:hover span { color: var(--void); }
+
+        /* Positioning Nodes */
+        #node-1 { top: -25px; left: 50%; transform: translateX(-50%); } 
+        #node-2 { top: 20%; right: -50px; } 
+        #node-3 { bottom: 20%; right: -50px; } 
+        #node-4 { bottom: -25px; left: 50%; transform: translateX(-50%); } 
+        #node-5 { bottom: 20%; left: -50px; } 
+        #node-6 { top: 20%; left: -50px; } 
+
+        @keyframes rotate-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- IMAGE CONTENT LAYERS --- */
+        .content-layer {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            width: 100%;
+            min-height: 100%;
+            padding: 0;
+        }
+
+        .content-layer.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* The Image Containers */
+        .evidence-board {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-bottom: 2px solid var(--phosphor-dim);
+            filter: contrast(1.1) sepia(0.2) grayscale(0.2); /* Slight terminal look */
+            mix-blend-mode: normal;
+        }
+        
+        /* Scanline on top of images */
+        .scan-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            grid-column: 1 / 4;
+            grid-row: 3 / 4;
+            border-top: 1px solid var(--phosphor-dim);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 10px;
+            font-size: 10px;
+        }
+
+        .back-btn {
+            background: var(--phosphor-dim);
+            border: none;
+            color: var(--void);
+            padding: 5px 20px;
+            text-transform: uppercase;
+            font-weight: bold;
+            display: none; 
+            cursor: pointer;
+        }
+        
+        .back-btn:hover {
+            background: var(--phosphor-main);
+            box-shadow: 0 0 10px var(--phosphor-main);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="crt-overlay"></div>
+
+    <div class="interface-grid" id="main-interface">
+        
+        <!-- HEADER -->
+        <header>
+            <div style="display:flex; gap:15px">
+                <span>// OS: KINTANA_TELO</span>
+                <span style="color:var(--alert)" class="blink">● REC</span>
+            </div>
+            <div>ARCHIVE_DATE: 2325.12.11</div>
+        </header>
+
+        <!-- LEFT SIDEBAR -->
+        <div class="sidebar-left">
+            <div>
+                <p>> GEOMETRY: UNSTABLE</p>
+                <p>> LAYERS DETECTED: 6</p>
+            </div>
+            <div>
+                <p>> LOAD "JUNK.EXE"</p>
+                <p>> RUNNING...</p>
+            </div>
+        </div>
+
+        <!-- VIEWPORT (CONTENT AREA) -->
+        <div class="viewport" id="viewport">
+            
+            <!-- HOME: RADIAL MENU -->
+            <div class="radial-system-container" id="radial-nav">
+                <div class="radar-circle">
+                    <!-- Rotating Axis Lines -->
+                    <div class="axis-line" style="transform: rotate(0deg)"></div>
+                    <div class="axis-line" style="transform: rotate(60deg)"></div>
+                    <div class="axis-line" style="transform: rotate(120deg)"></div>
+                </div>
+                
+                <!-- CENTER LOGO -->
+                <img src="Junk_Transparent.png" alt="JUNK LOGO" class="center-logo">
+
+                <!-- NAVIGATION NODES -->
+                <!-- Top -->
+                <div class="node-btn" id="node-1" onclick="loadPhase('phase-intro')">
+                    STORY
+                    <span>[ INTRO.JPG ]</span>
+                </div>
+                
+                <!-- Top Right -->
+                <div class="node-btn" id="node-2" onclick="loadPhase('phase-1')">
+                    COLLAPSE
+                    <span>[ PHASE 1 ]</span>
+                </div>
+
+                <!-- Bottom Right -->
+                <div class="node-btn" id="node-3" onclick="loadPhase('phase-2')">
+                    RULES
+                    <span>[ PHASE 2 ]</span>
+                </div>
+
+                <!-- Bottom -->
+                <div class="node-btn" id="node-4" onclick="loadPhase('phase-4')">
+                    WORLD MAP
+                    <span>[ PHASE 4 ]</span>
+                </div>
+
+                <!-- Bottom Left -->
+                <div class="node-btn" id="node-5" onclick="loadPhase('phase-5')">
+                    JOURNEY
+                    <span>[ PHASE 5 ]</span>
+                </div>
+
+                <!-- Top Left -->
+                <div class="node-btn" id="node-6" onclick="loadPhase('phase-6')">
+                    ARTIFACTS
+                    <span>[ PHASE 6 ]</span>
+                </div>
+            </div>
+
+            <!-- CONTENT LAYERS (IMAGES) -->
+            <!-- These are hidden until clicked -->
+            
+            <div id="phase-intro" class="content-layer">
+                <div class="scan-overlay"></div>
+                <!-- <img src="INTRO.jpeg" class="evidence-board" alt="Intro Board"> -->
+                <img src="JUNK.jpeg" class="evidence-board" alt="Junk Title Board">
+            </div>
+
+            <div id="phase-1" class="content-layer">
+                <div class="scan-overlay"></div>
+                <img src="phase 1.jpeg" class="evidence-board" alt="Phase 1 Board">
+            </div>
+
+            <div id="phase-2" class="content-layer">
+                <div class="scan-overlay"></div>
+                <img src="Phase 2.jpeg" class="evidence-board" alt="Phase 2 Board">
+            </div>
+
+            <div id="phase-4" class="content-layer">
+                <div class="scan-overlay"></div>
+                <img src="Phase 4.jpeg" class="evidence-board" alt="Phase 4 Board">
+            </div>
+
+            <div id="phase-5" class="content-layer">
+                <div class="scan-overlay"></div>
+                <img src="Phase 5.jpeg" class="evidence-board" alt="Phase 5 Board">
+            </div>
+
+            <div id="phase-6" class="content-layer">
+                <div class="scan-overlay"></div>
+                <img src="Phase 6.jpeg" class="evidence-board" alt="Phase 6 Board">
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div class="sidebar-right">
+            <div>
+                <p>RAM: 64TB</p>
+                <p>NET: OFF-GRID</p>
+            </div>
+            <div>
+                <p>> DECRYPTING IMAGES...</p>
+                <p style="color:var(--phosphor-bright)">> COMPLETE</p>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer>
+            <button class="back-btn" id="back-btn" onclick="resetSystem()">[ CLOSE FILE ]</button>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <a href="../terrain.html" style="color: var(--phosphor-main); text-decoration: none; padding: 5px 10px; border: 1px solid var(--phosphor-dim); background: var(--void);">OVERVIEW</a>
+                <a href="../Artifact/Artifact.html" style="color: var(--phosphor-main); text-decoration: none; padding: 5px 10px; border: 1px solid var(--phosphor-dim); background: var(--void);">ARTIFACTS</a>
+                <div>SECTOR: JUNK_ARCHIPELAGO</div>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        const mainInterface = document.getElementById('main-interface');
+        const contentLayers = document.querySelectorAll('.content-layer');
+        const backBtn = document.getElementById('back-btn');
+        const viewport = document.getElementById('viewport');
+
+        function loadPhase(phaseId) {
+            // 1. Animate UI
+            mainInterface.classList.add('active-content');
+            
+            // 2. Clear previous active layers
+            contentLayers.forEach(layer => layer.classList.remove('active'));
+
+            // 3. Show new layer with slight delay for "loading" feel
+            setTimeout(() => {
+                const selectedLayer = document.getElementById(phaseId);
+                if(selectedLayer) {
+                    selectedLayer.classList.add('active');
+                    // Scroll to top of image
+                    viewport.scrollTop = 0;
+                }
+            }, 400);
+
+            // 4. Enable Back Button
+            backBtn.style.display = 'block';
+        }
+
+        function resetSystem() {
+            // 1. Reset UI
+            mainInterface.classList.remove('active-content');
+
+            // 2. Hide Content
+            contentLayers.forEach(layer => layer.classList.remove('active'));
+
+            // 3. Hide Back Button
+            backBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
