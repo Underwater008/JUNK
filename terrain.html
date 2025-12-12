@@ -1420,31 +1420,80 @@
         let draggingLabel = null;
         let isDraggingLabel = false;
 
-        // Load labels from localStorage
-        function loadLabels() {
-            const saved = localStorage.getItem('mapLabels');
-            if (saved) {
-                try {
-                    mapLabels = JSON.parse(saved);
-                    mapLabels.forEach(label => create3DLabel(label));
-                } catch (e) {
-                    console.error('Error loading labels:', e);
+        // Load labels from JSONBin
+        async function loadLabels() {
+            try {
+                const response = await fetch(`${JSONBIN_URL}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': JSONBIN_API_KEY
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const data = result.record;
+
+                    if (data && data.mapLabels && Array.isArray(data.mapLabels)) {
+                        mapLabels = data.mapLabels;
+                        mapLabels.forEach(label => create3DLabel(label));
+                        console.log('Loaded labels from JSONBin:', mapLabels.length);
+                    }
                 }
+            } catch (e) {
+                console.error('Error loading labels from JSONBin:', e);
             }
         }
 
-        // Save labels to localStorage
-        function saveLabels() {
-            const data = mapLabels.map(l => ({
-                id: l.id,
-                text: l.text,
-                worldX: l.worldX,
-                worldY: l.worldY,
-                worldZ: l.worldZ,
-                size: l.size,
-                color: l.color
-            }));
-            localStorage.setItem('mapLabels', JSON.stringify(data));
+        // Save labels to JSONBin
+        async function saveLabels() {
+            try {
+                // Fetch latest data to preserve journeys
+                const getResponse = await fetch(`${JSONBIN_URL}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': JSONBIN_API_KEY
+                    }
+                });
+
+                let existingData = {};
+                if (getResponse.ok) {
+                    const result = await getResponse.json();
+                    existingData = result.record || {};
+                }
+
+                // Update labels while preserving other data
+                const dataToSave = {
+                    ...existingData,
+                    mapLabels: mapLabels.map(l => ({
+                        id: l.id,
+                        text: l.text,
+                        worldX: l.worldX,
+                        worldY: l.worldY,
+                        worldZ: l.worldZ,
+                        size: l.size,
+                        color: l.color
+                    })),
+                    labelsLastModified: new Date().toISOString()
+                };
+
+                const response = await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToSave)
+                });
+
+                if (response.ok) {
+                    console.log('Labels saved to JSONBin');
+                } else {
+                    console.error('Failed to save labels:', response.status);
+                }
+            } catch (e) {
+                console.error('Error saving labels to JSONBin:', e);
+            }
         }
 
         // Toggle label admin mode with Ctrl+Shift+X
