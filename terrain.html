@@ -722,10 +722,14 @@
             padding: 2px 6px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.7);
+            cursor: grab !important;
         }
         body.label-admin-mode .map-label:hover {
             background: rgba(107, 76, 230, 0.1);
             border-color: #4c3cc0;
+        }
+        body.label-admin-mode .map-label:active {
+            cursor: grabbing !important;
         }
     </style>
 </head>
@@ -888,8 +892,9 @@
         </div>
         <div class="label-hint">
             <strong>Ctrl+Shift+X</strong> to toggle label mode<br>
-            Click on terrain to place labels<br>
-            Click labels to select, then delete
+            Click terrain to place labels<br>
+            Drag labels to reposition them<br>
+            Click to select, then delete
         </div>
     </div>
 
@@ -1412,6 +1417,8 @@
         let mapLabels = [];
         let label3DObjects = []; // Three.js CSS2DObjects
         let selectedLabel = null;
+        let draggingLabel = null;
+        let isDraggingLabel = false;
 
         // Load labels from localStorage
         function loadLabels() {
@@ -1469,17 +1476,25 @@
             labelDiv.style.color = labelData.color;
             labelDiv.dataset.labelId = labelData.id;
 
-            // Make clickable in admin mode
-            labelDiv.addEventListener('click', (e) => {
+            // Make clickable and draggable in admin mode
+            labelDiv.addEventListener('mousedown', (e) => {
                 if (!labelAdminMode) return;
                 e.stopPropagation();
+                e.preventDefault();
+
                 selectedLabel = labelData;
+                draggingLabel = labelData;
+                isDraggingLabel = true;
+
+                // Disable camera controls while dragging
+                controls.enabled = false;
 
                 // Highlight selected
                 label3DObjects.forEach(obj => {
                     obj.element.style.outline = '';
                 });
                 labelDiv.style.outline = '2px solid #6b4ce6';
+                labelDiv.style.cursor = 'grabbing';
             });
 
             const label2D = new CSS2DObject(labelDiv);
@@ -1559,8 +1574,9 @@
 
         // Setup label click handler - called after renderer is created
         function setupLabelClickHandler() {
+            // Click to place new label
             renderer.domElement.addEventListener('click', (e) => {
-                if (!labelAdminMode) return;
+                if (!labelAdminMode || isDraggingLabel) return;
 
                 const text = document.getElementById('label-text').value.trim();
                 if (!text) return;
@@ -1594,6 +1610,54 @@
 
                     document.getElementById('label-text').value = '';
                     showNotification({ message: 'Label placed on terrain', type: 'success' });
+                }
+            });
+
+            // Mousemove for dragging labels
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!labelAdminMode || !isDraggingLabel || !draggingLabel) return;
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(terrainMesh);
+
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+
+                    // Update label position
+                    draggingLabel.worldX = point.x;
+                    draggingLabel.worldY = point.y + 2;
+                    draggingLabel.worldZ = point.z;
+
+                    // Update 3D object position
+                    const labelObj = label3DObjects.find(obj => obj.userData.labelData.id === draggingLabel.id);
+                    if (labelObj) {
+                        labelObj.position.set(point.x, point.y + 2, point.z);
+                    }
+                }
+            });
+
+            // Mouseup to stop dragging
+            document.addEventListener('mouseup', (e) => {
+                if (isDraggingLabel) {
+                    isDraggingLabel = false;
+                    controls.enabled = true;
+
+                    // Reset cursor
+                    const labelObj = label3DObjects.find(obj => obj.userData.labelData.id === draggingLabel?.id);
+                    if (labelObj) {
+                        labelObj.element.style.cursor = 'grab';
+                    }
+
+                    if (draggingLabel) {
+                        saveLabels();
+                        showNotification({ message: 'Label repositioned', type: 'success' });
+                    }
+
+                    draggingLabel = null;
                 }
             });
         }
