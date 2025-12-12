@@ -1455,9 +1455,11 @@
             let lower = (link || '').toLowerCase().trim();
             if (!lower) return '';
             if (lower.startsWith('%3cblockquote') || lower.includes('<blockquote')) return ''; // treat old embed snippets as invalid
-            if (lower.includes('<iframe') || lower.includes('<div')) return 'embed';
-            if (lower.includes('player.vimeo.com/external/')) return 'vimeo-external';
-            if (lower.endsWith('.m3u8') || lower.includes('.m3u8?')) return 'hls';
+            if (lower.includes('player.vimeo.com/external')) {
+                if (lower.endsWith('.m3u8') || lower.includes('.m3u8')) return 'hls';
+                if (lower.endsWith('.mp4') || lower.includes('.mp4')) return 'video';
+            }
+            if (lower.endsWith('.m3u8') || lower.includes('.m3u8')) return 'hls';
             if (lower.includes('vimeo.com')) return 'vimeo';
             if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.endsWith('.mp4') || lower.endsWith('.webm')) return 'video';
             return 'image';
@@ -1466,12 +1468,6 @@
         function getVimeoId(url = '') {
             // Matches vimeo.com/{id} or vimeo.com/.../{id}
             const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-            return match ? match[1] : '';
-        }
-
-        function getVimeoExternalId(url = '') {
-            // Matches player.vimeo.com/external/{id}.m3u8 or .mp4
-            const match = url.match(/player\.vimeo\.com\/external\/(\d+)/i);
             return match ? match[1] : '';
         }
 
@@ -2072,8 +2068,13 @@
             const curve = new THREE.CatmullRomCurve3(points3D, true, 'catmullrom', 0.5);
 
             // Sample points along the curve
-            const numSegments = 200;
-            const curvePoints = curve.getPoints(numSegments);
+            const numSegments = 500;
+
+            // For a closed curve, sample points evenly using getPointAt for consistent spacing
+            const curvePoints = [];
+            for (let i = 0; i < numSegments; i++) {
+                curvePoints.push(curve.getPointAt(i / numSegments));
+            }
 
             // Create geometry for the wave ribbon
             const geometry = new THREE.BufferGeometry();
@@ -2083,7 +2084,7 @@
 
             const width = waveSettings.pathWidth;
 
-            // Create vertices for closed loop (don't duplicate last point)
+            // Create vertices for closed loop
             for (let i = 0; i < numSegments; i++) {
                 const point = curvePoints[i];
                 const nextPoint = curvePoints[(i + 1) % numSegments];
@@ -2104,7 +2105,7 @@
                 vertices.push(inner.x, inner.y, inner.z);
                 vertices.push(outer.x, outer.y, outer.z);
 
-                // UVs for animation - use continuous u that wraps
+                // UVs for animation - normalized 0-1 range
                 const u = i / numSegments;
                 uvs.push(u, 0);
                 uvs.push(u, 1);
@@ -2193,15 +2194,23 @@
                         float edgeDist = abs(vUv.y - 0.5) * 2.0;
                         float edgeFade = 1.0 - pow(edgeDist, 1.5);
 
-                        // Flowing noise patterns
-                        float noise1 = snoise(vec2(vUv.x * 8.0 - time * 0.3, vUv.y * 4.0 + time * 0.1)) * 0.5 + 0.5;
-                        float noise2 = snoise(vec2(vUv.x * 15.0 + time * 0.5, vUv.y * 8.0 - time * 0.2)) * 0.5 + 0.5;
-                        float noise3 = snoise(vec2(vUv.x * 25.0 - time * 0.8, vUv.y * 3.0)) * 0.5 + 0.5;
+                        // Use 2*PI multiplied coordinates for seamless tiling
+                        // All multipliers are integers so sin() tiles perfectly around the loop
+                        float twoPi = 6.28318530718;
+                        float uAngle = vUv.x * twoPi;
 
-                        // Traveling wave patterns
-                        float wave1 = sin(vUv.x * 20.0 - time * 2.0) * 0.5 + 0.5;
-                        float wave2 = sin(vUv.x * 35.0 + time * 3.0) * 0.5 + 0.5;
-                        float wave3 = sin(vUv.x * 50.0 - time * 4.0 + vUv.y * 10.0) * 0.5 + 0.5;
+                        // Flowing noise patterns - use sine-based pseudo-noise for seamless tiling
+                        float noise1 = sin(uAngle * 8.0 - time * 0.3 + vUv.y * 4.0) * 0.3 +
+                                       sin(uAngle * 13.0 + time * 0.2) * 0.2 + 0.5;
+                        float noise2 = sin(uAngle * 15.0 + time * 0.5 + vUv.y * 8.0) * 0.3 +
+                                       sin(uAngle * 21.0 - time * 0.3) * 0.2 + 0.5;
+                        float noise3 = sin(uAngle * 25.0 - time * 0.8 + vUv.y * 3.0) * 0.3 +
+                                       sin(uAngle * 34.0 + time * 0.4) * 0.2 + 0.5;
+
+                        // Traveling wave patterns (integers for seamless tiling)
+                        float wave1 = sin(uAngle * 20.0 - time * 2.0) * 0.5 + 0.5;
+                        float wave2 = sin(uAngle * 35.0 + time * 3.0) * 0.5 + 0.5;
+                        float wave3 = sin(uAngle * 50.0 - time * 4.0 + vUv.y * 10.0) * 0.5 + 0.5;
 
                         // Blend base colors with noise
                         vec3 color = mix(baseColor1, baseColor2, noise1);
@@ -2213,16 +2222,17 @@
 
                         // Bioluminescent glow pulses
                         float glow = pow(wave3 * noise3, 2.0) * 0.6;
-                        glow += pow(sin(vUv.x * 80.0 - time * 5.0) * 0.5 + 0.5, 4.0) * 0.3;
+                        glow += pow(sin(uAngle * 80.0 - time * 5.0) * 0.5 + 0.5, 4.0) * 0.3;
                         color = mix(color, glowColor, glow * edgeFade);
 
-                        // Sparkle effect
-                        float sparkle = pow(snoise(vec2(vUv.x * 100.0 + time * 2.0, vUv.y * 50.0 - time)), 8.0);
+                        // Sparkle effect - use layered sines instead of noise for seamless tiling
+                        float sparkle = pow(abs(sin(uAngle * 89.0 + time * 2.0) * sin(uAngle * 97.0 - time * 1.5) *
+                                           sin(vUv.y * 50.0 - time)), 8.0);
                         color += sparkle * glowColor * 0.5;
 
                         // Center line glow
                         float centerGlow = exp(-edgeDist * 3.0) * 0.3;
-                        color += centerGlow * glowColor * (sin(vUv.x * 30.0 - time * 3.0) * 0.3 + 0.7);
+                        color += centerGlow * glowColor * (sin(uAngle * 30.0 - time * 3.0) * 0.3 + 0.7);
 
                         // Final alpha with edge fade
                         float alpha = opacity * edgeFade * (0.7 + noise1 * 0.3);
@@ -2231,8 +2241,9 @@
                     }
                 `,
                 transparent: true,
-                side: THREE.DoubleSide,
+                side: THREE.FrontSide,
                 depthWrite: false,
+                depthTest: false,
                 blending: THREE.AdditiveBlending
             });
 
@@ -2584,8 +2595,9 @@
             camera.lookAt(0, 0, 0);
 
             // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
             document.body.appendChild(renderer.domElement);
 
             // Label renderer
@@ -2836,6 +2848,9 @@
                 loadTexturePromise('Assets/images/Map/Map Height Map.png' + cacheBuster),
                 loadTexturePromise('Assets/images/Map/JUNK Map.png' + cacheBuster)
             ]).then(async ([heightTex, materialTex]) => {
+                // Treat material texture as sRGB for accurate colors
+                materialTex.colorSpace = THREE.SRGBColorSpace;
+                materialTex.needsUpdate = true;
                 const h = getImageDataFromTexture(heightTex);
                 const m = getImageDataFromTexture(materialTex);
 
@@ -2935,7 +2950,7 @@
             // Apply the material texture directly
             const material = new THREE.MeshBasicMaterial({
                 map: materialTex,
-                side: THREE.DoubleSide
+                side: THREE.FrontSide
             });
 
             // Get position attribute to modify heights
@@ -2999,8 +3014,11 @@
 
             const oceanGeometry = new THREE.PlaneGeometry(1024, 1024);
             const oceanMaterial = new THREE.MeshBasicMaterial({
-                color: oceanColor,
-                side: THREE.DoubleSide
+                color: 0x32546d,
+                side: THREE.FrontSide,
+                polygonOffset: true,
+                polygonOffsetFactor: 1,
+                polygonOffsetUnits: 1
             });
             const oceanPlane = new THREE.Mesh(oceanGeometry, oceanMaterial);
             oceanPlane.rotation.x = -Math.PI / 2;
@@ -3103,7 +3121,7 @@
                         color: personColorHex,
                         transparent: true,
                         opacity: 0.4,
-                        side: THREE.DoubleSide
+                        side: THREE.FrontSide
                     });
                     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
                     ring.position.set(point.x, point.y, point.z);
