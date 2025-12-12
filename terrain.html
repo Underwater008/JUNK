@@ -984,9 +984,9 @@
             <div class="nav-dot" style="background: #5ABF8C;"></div>
             <span class="nav-name">YUZIE</span>
         </div>
-        <div class="journey-nav-item" data-person="lillith" onclick="selectPerson('lillith')">
+        <div class="journey-nav-item" data-person="lilleth" onclick="selectPerson('lilleth')">
             <div class="nav-dot" style="background: #A64D79;"></div>
-            <span class="nav-name">LILLITH</span>
+            <span class="nav-name">LILLETH</span>
         </div>
         <div class="journey-nav-item" data-person="jonny" onclick="selectPerson('jonny')">
             <div class="nav-dot" style="background: #F4D35E;"></div>
@@ -1312,7 +1312,8 @@
             steven: 0x4A8EC2,
             tiger: 0x6B4CE6,
             xiao: 0xF4C2C2,
-            lillith: 0xA64D79,
+            lilleth: 0xA64D79,
+            lillith: 0xA64D79,  // Alias for old spelling
             yuzie: 0x5ABF8C,
             jonny: 0xF4D35E
         };
@@ -1393,59 +1394,15 @@
             };
         })();
 
-        // Default journey data for each person - acts as a seed if JSONBin is empty
-        const defaultJourneys = {
-            isabel: [
-                { id: 1, name: "Coral Bay", icon: "waves", x: -45, z: -30, description: "Isabel discovered a hidden underwater cave system here." },
-                { id: 2, name: "Tide Pools", icon: "water_drop", x: -30, z: -20, description: "A research station studying marine life adaptation." },
-                { id: 3, name: "Lighthouse Ruins", icon: "navigation", x: -15, z: -10, description: "The old lighthouse where Isabel found her first artifact." }
-            ],
-            ziyi: [
-                { id: 1, name: "Crystal Caverns", icon: "diamond", x: -40, z: 15, description: "Ziyi mapped these luminescent caves over three expeditions." },
-                { id: 2, name: "Echo Chamber", icon: "graphic_eq", x: -25, z: 25, description: "A natural amphitheater with strange acoustic properties." },
-                { id: 3, name: "Garden Shrine", icon: "local_florist", x: -10, z: 35, description: "An overgrown temple where Ziyi practiced meditation." },
-                { id: 4, name: "Mist Valley", icon: "cloud", x: 5, z: 40, description: "A perpetually foggy valley hiding ancient secrets." }
-            ],
-            steven: [
-                { id: 1, name: "Forge Workshop", icon: "hardware", x: 30, z: -35, description: "Steven rebuilt the old forge to craft tools for the community." },
-                { id: 2, name: "Scrap Yard", icon: "recycling", x: 45, z: -25, description: "A treasure trove of pre-collapse technology." },
-                { id: 3, name: "Wind Farm", icon: "air", x: 50, z: -10, description: "Steven restored three turbines to power the eastern settlements." }
-            ],
-            tiger: [
-                { id: 1, name: "Hunter's Blind", icon: "visibility", x: 20, z: 30, description: "Tiger's lookout point for tracking wildlife movements." },
-                { id: 2, name: "Wolf Den", icon: "pets", x: 35, z: 40, description: "Where Tiger befriended the last pack of mountain wolves." },
-                { id: 3, name: "Summit Camp", icon: "terrain", x: 45, z: 50, description: "The highest point Tiger reached during the great expedition." },
-                { id: 4, name: "River Crossing", icon: "kayaking", x: 30, z: 25, description: "A dangerous ford that Tiger navigated many times." }
-            ],
-            xiao: [
-                { id: 1, name: "Observatory Dome", icon: "nights_stay", x: -5, z: 5, description: "Xiao spent nights here studying the changed constellations." },
-                { id: 2, name: "Data Archive", icon: "storage", x: 10, z: 0, description: "A server room Xiao worked to restore and preserve." }
-            ],
-            lillith: [
-                { id: 1, name: "Apothecary", icon: "medication", x: -35, z: -5, description: "Lilleth established a clinic to heal the wounded." },
-                { id: 2, name: "Herb Garden", icon: "spa", x: -25, z: 5, description: "A carefully cultivated garden of medicinal plants." },
-                { id: 3, name: "Hot Springs", icon: "hot_tub", x: -15, z: 15, description: "Natural springs with therapeutic properties." },
-                { id: 4, name: "Sanctuary", icon: "temple_buddhist", x: -5, z: 25, description: "A place of rest and healing that Lilleth built." }
-            ],
-            yuzie: [
-                { id: 1, name: "Farmer's Market", icon: "storefront", x: 0, z: -25, description: "Yuzie organized the first post-collapse trade fair here." },
-                { id: 2, name: "Greenhouse", icon: "yard", x: 15, z: -30, description: "A restored greenhouse producing food year-round." },
-                { id: 3, name: "Orchard", icon: "park", x: 25, z: -20, description: "Yuzie planted these fruit trees five years ago." }
-            ],
-            jonny: [
-                { id: 1, name: "Radio Tower", icon: "cell_tower", x: 5, z: -15, description: "Jonny got the old transmitter working again." },
-                { id: 2, name: "Signal Station", icon: "podcasts", x: 20, z: -5, description: "A relay point extending communication range." },
-                { id: 3, name: "Watchtower", icon: "location_city", x: 35, z: 5, description: "The tallest structure Jonny climbed to install antennas." },
-                { id: 4, name: "Bunker HQ", icon: "military_tech", x: 40, z: 15, description: "Command center for coordinating expeditions." }
-            ]
-        };
+        // Empty default - all data comes from JSONBin only
+        const defaultJourneys = {};
 
         const cloneJourneys = (source) => JSON.parse(JSON.stringify(source));
 
         // Active journey data (mutable and synced to JSONBin)
         let allJourneys = cloneJourneys(defaultJourneys);
 
-        const navPersonOrder = ['ziyi','steven','yuzie','lillith','jonny','isabel','xiao','tiger'];
+        const navPersonOrder = ['ziyi','steven','yuzie','lilleth','jonny','isabel','xiao','tiger'];
         const getSortedPeople = () => {
             const existing = Object.keys(allJourneys);
             const ordered = navPersonOrder.filter(p => existing.includes(p));
@@ -1495,8 +1452,18 @@
 
         function normalizeJourneyData(data) {
             const safeData = data && Object.keys(data).length > 0 ? cloneJourneys(data) : cloneJourneys(defaultJourneys);
+
+            // Migrate old spelling: lillith -> lilleth
+            if (safeData.lillith && !safeData.lilleth) {
+                safeData.lilleth = safeData.lillith;
+                delete safeData.lillith;
+            } else if (safeData.lillith && safeData.lilleth) {
+                // Merge if both exist (lilleth takes priority, but add any unique lillith points)
+                delete safeData.lillith;
+            }
+
             Object.keys(safeData).forEach(person => {
-                safeData[person] = (safeData[person] || []).map((stop, idx) => normalizeJourneyPoint(stop, idx, person));
+                safeData[person] = (safeData[person] || []).map((stop, idx) => normalizeJourneyPoint(stop, idx, person === 'lillith' ? 'lilleth' : person));
             });
             return safeData;
         }
@@ -3913,7 +3880,17 @@
                 }
 
                 // Merge: start with remote journeys, then overlay ONLY the persons that were edited
-                const remoteJourneys = existingRecord.journeys || {};
+                let remoteJourneys = existingRecord.journeys || {};
+
+                // Migrate old spelling in remote data: lillith -> lilleth
+                if (remoteJourneys.lillith) {
+                    if (!remoteJourneys.lilleth) {
+                        remoteJourneys.lilleth = remoteJourneys.lillith;
+                    }
+                    delete remoteJourneys.lillith;
+                    console.log('Migrated lillith -> lilleth in JSONBin');
+                }
+
                 const localJourneys = normalizeJourneyData(allJourneys);
 
                 // Only update persons that were actually edited this session
