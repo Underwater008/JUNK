@@ -12,7 +12,7 @@
             --phosphor-dim: #4a5a42;
             --alert: #ff4646;         /* War/Danger */
             --void: #0a0a0a;          /* Deep Dark Background */
-            
+
             --font-mono: 'Courier New', Courier, monospace;
         }
 
@@ -22,7 +22,7 @@
             background-color: var(--void);
             color: var(--phosphor-main);
             font-family: var(--font-mono);
-            overflow: hidden; 
+            overflow: hidden;
             height: 100vh;
             width: 100vw;
             font-size: 14px;
@@ -51,11 +51,12 @@
         /* --- LAYOUT GRID --- */
         .interface-grid {
             display: grid;
-            grid-template-columns: 200px 1fr 200px;
-            grid-template-rows: 60px 1fr 40px;
+            /* UPDATED: Sidebars much smaller (100px) to maximize center image */
+            grid-template-columns: 100px 1fr 100px;
+            grid-template-rows: 50px 1fr 40px;
             height: 100vh;
             width: 100vw;
-            padding: 15px;
+            padding: 10px;
             gap: 10px;
             position: relative;
             z-index: 10;
@@ -70,7 +71,8 @@
             align-items: center;
             text-transform: uppercase;
             letter-spacing: 2px;
-            padding-bottom: 10px;
+            padding-bottom: 5px;
+            font-size: 12px;
         }
 
         .blink { animation: blinker 2s linear infinite; }
@@ -80,11 +82,12 @@
         .sidebar-left, .sidebar-right {
             display: flex;
             flex-direction: column;
-            font-size: 11px;
-            line-height: 1.6;
+            font-size: 10px; /* Smaller font to fit narrow column */
+            line-height: 1.4;
             color: var(--phosphor-dim);
             justify-content: space-between;
             padding: 20px 0;
+            overflow: hidden;
         }
         .sidebar-right { text-align: right; }
 
@@ -93,14 +96,41 @@
             grid-column: 2 / 3;
             grid-row: 2 / 3;
             position: relative;
-            overflow-y: auto; 
+            overflow-y: auto;
             overflow-x: hidden;
             border: 1px solid var(--phosphor-dim);
-            background: rgba(0,0,0,0.3);
-            
+            background: #000;
+
+            /* UPDATED: No padding so image touches edges */
+            padding: 0;
+
             /* Hide Scrollbar aesthetics */
             scrollbar-width: thin;
             scrollbar-color: var(--phosphor-dim) var(--void);
+        }
+
+        /* --- NEXT ARROW BUTTON --- */
+        .nav-next-btn {
+            position: fixed;
+            bottom: 60px; /* Above footer */
+            right: 120px; /* Inside the viewport area */
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--phosphor-main);
+            color: var(--phosphor-main);
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000; /* Above images */
+            display: none; /* Hidden on home */
+            text-transform: uppercase;
+            box-shadow: 0 0 10px #000;
+            transition: all 0.2s;
+        }
+
+        .nav-next-btn:hover {
+            background: var(--phosphor-main);
+            color: var(--void);
         }
 
         /* --- RADIAL MENU (HOME) --- */
@@ -121,8 +151,8 @@
             top: 90%;
             left: 90%;
             transform: translate(-50%, -50%) scale(0.25);
-            opacity: 0.4;
-            pointer-events: none; /* Disable clicks when minimized */
+            opacity: 0.0; /* Fully hide it so it doesn't block images */
+            pointer-events: none;
         }
 
         .radar-circle {
@@ -141,12 +171,11 @@
             background: var(--phosphor-dim);
         }
 
-        /* --- UPDATED LOGO SIZE --- */
         .center-logo {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 400px; /* Doubled from 200px */
+            width: 400px; /* Large Logo */
             height: auto;
             z-index: 25;
             filter: drop-shadow(0 0 10px var(--phosphor-dim));
@@ -185,12 +214,12 @@
         .node-btn:hover span { color: var(--void); }
 
         /* Positioning Nodes */
-        #node-1 { top: -25px; left: 50%; transform: translateX(-50%); } 
-        #node-2 { top: 20%; right: -50px; } 
-        #node-3 { bottom: 20%; right: -50px; } 
-        #node-4 { bottom: -25px; left: 50%; transform: translateX(-50%); } 
-        #node-5 { bottom: 20%; left: -50px; } 
-        #node-6 { top: 20%; left: -50px; } 
+        #node-1 { top: -25px; left: 50%; transform: translateX(-50%); }
+        #node-2 { top: 20%; right: -50px; }
+        #node-3 { bottom: 20%; right: -50px; }
+        #node-4 { bottom: -25px; left: 50%; transform: translateX(-50%); }
+        #node-5 { bottom: 20%; left: -50px; }
+        #node-6 { top: 20%; left: -50px; }
 
         @keyframes rotate-slow {
             0% { transform: rotate(0deg); }
@@ -218,10 +247,10 @@
             height: auto;
             display: block;
             border-bottom: 2px solid var(--phosphor-dim);
-            filter: contrast(1.1) sepia(0.2) grayscale(0.2); /* Slight terminal look */
-            mix-blend-mode: normal;
+            /* Slightly clearer filter for Zoom readability */
+            filter: contrast(1.05) sepia(0.1);
         }
-        
+
         /* Scanline on top of images */
         .scan-overlay {
             position: absolute;
@@ -250,10 +279,10 @@
             padding: 5px 20px;
             text-transform: uppercase;
             font-weight: bold;
-            display: none; 
+            display: none;
             cursor: pointer;
         }
-        
+
         .back-btn:hover {
             background: var(--phosphor-main);
             box-shadow: 0 0 10px var(--phosphor-main);
@@ -266,7 +295,7 @@
     <div class="crt-overlay"></div>
 
     <div class="interface-grid" id="main-interface">
-        
+
         <!-- HEADER -->
         <header>
             <div style="display:flex; gap:15px">
@@ -280,79 +309,48 @@
         <div class="sidebar-left">
             <div>
                 <p>> GEOMETRY: UNSTABLE</p>
-                <p>> LAYERS DETECTED: 6</p>
+                <p>> LAYERS: 6</p>
             </div>
             <div>
-                <p>> LOAD "JUNK.EXE"</p>
+                <p>> JUNK.EXE</p>
                 <p>> RUNNING...</p>
             </div>
         </div>
 
         <!-- VIEWPORT (CONTENT AREA) -->
         <div class="viewport" id="viewport">
-            
+
             <!-- HOME: RADIAL MENU -->
             <div class="radial-system-container" id="radial-nav">
                 <div class="radar-circle">
-                    <!-- Rotating Axis Lines -->
                     <div class="axis-line" style="transform: rotate(0deg)"></div>
                     <div class="axis-line" style="transform: rotate(60deg)"></div>
                     <div class="axis-line" style="transform: rotate(120deg)"></div>
                 </div>
-                
+
                 <!-- CENTER LOGO -->
                 <img src="Junk_Transparent.png" alt="JUNK LOGO" class="center-logo">
 
                 <!-- NAVIGATION NODES -->
-                <!-- Top -->
-                <div class="node-btn" id="node-1" onclick="loadPhase('phase-intro')">
-                    INTRO
-                    <span>[ INTRO ]</span>
-                </div>
-                
-                <!-- Top Right -->
-                <div class="node-btn" id="node-2" onclick="loadPhase('phase-1')">
-                    COLLAPSE
-                    <span>[ PHASE 1 ]</span>
-                </div>
-
-                <!-- Bottom Right -->
-                <div class="node-btn" id="node-3" onclick="loadPhase('phase-2')">
-                    RULES
-                    <span>[ PHASE 2 ]</span>
-                </div>
-
-                <!-- Bottom -->
-                <div class="node-btn" id="node-4" onclick="loadPhase('phase-4')">
-                    WORLD MAP
-                    <span>[ PHASE 4 ]</span>
-                </div>
-
-                <!-- Bottom Left -->
-                <div class="node-btn" id="node-5" onclick="loadPhase('phase-5')">
-                    JOURNEY
-                    <span>[ PHASE 5 ]</span>
-                </div>
-
-                <!-- Top Left -->
-                <div class="node-btn" id="node-6" onclick="loadPhase('phase-6')">
-                    ARTIFACTS
-                    <span>[ PHASE 6 ]</span>
-                </div>
+                <div class="node-btn" id="node-1" onclick="loadPhase('phase-intro')">STORY<span>[ INTRO ]</span></div>
+                <div class="node-btn" id="node-2" onclick="loadPhase('phase-1')">COLLAPSE<span>[ PHASE 1 ]</span></div>
+                <div class="node-btn" id="node-3" onclick="loadPhase('phase-2')">RULES<span>[ PHASE 2 ]</span></div>
+                <div class="node-btn" id="node-4" onclick="loadPhase('phase-4')">MAP<span>[ PHASE 4 ]</span></div>
+                <div class="node-btn" id="node-5" onclick="loadPhase('phase-5')">JOURNEY<span>[ PHASE 5 ]</span></div>
+                <div class="node-btn" id="node-6" onclick="loadPhase('phase-6')">ARTIFACTS<span>[ PHASE 6 ]</span></div>
             </div>
 
             <!-- CONTENT LAYERS (IMAGES) -->
-            <!-- These are hidden until clicked -->
-            
+
             <div id="phase-intro" class="content-layer">
                 <div class="scan-overlay"></div>
-                <!-- <img src="INTRO.jpeg" class="evidence-board" alt="Intro Board"> -->
+                <img src="INTRO.jpeg" class="evidence-board" alt="Intro Board">
                 <img src="JUNK.jpeg" class="evidence-board" alt="Junk Title Board">
             </div>
 
             <div id="phase-1" class="content-layer">
                 <div class="scan-overlay"></div>
-                <img src="phase 1.jpeg" class="evidence-board" alt="Phase 1 Board">
+                <img src="Phase 1.jpeg" class="evidence-board" alt="Phase 1 Board">
             </div>
 
             <div id="phase-2" class="content-layer">
@@ -377,26 +375,25 @@
 
         </div>
 
+        <!-- NAVIGATION BUTTONS -->
+        <button class="nav-next-btn" id="next-btn" onclick="nextPhase()">[ NEXT LAYER > ]</button>
+
         <!-- RIGHT SIDEBAR -->
         <div class="sidebar-right">
             <div>
                 <p>RAM: 64TB</p>
-                <p>NET: OFF-GRID</p>
+                <p>NET: OFF</p>
             </div>
             <div>
-                <p>> DECRYPTING IMAGES...</p>
-                <p style="color:var(--phosphor-bright)">> COMPLETE</p>
+                <p>> IMG: READY</p>
+                <p style="color:var(--phosphor-bright)">> OK</p>
             </div>
         </div>
 
         <!-- FOOTER -->
         <footer>
             <button class="back-btn" id="back-btn" onclick="resetSystem()">[ CLOSE FILE ]</button>
-            <div style="display: flex; gap: 20px; align-items: center;">
-                <a href="../terrain.html" style="color: var(--phosphor-main); text-decoration: none; padding: 5px 10px; border: 1px solid var(--phosphor-dim); background: var(--void);">OVERVIEW</a>
-                <a href="../Artifact/Artifact.html" style="color: var(--phosphor-main); text-decoration: none; padding: 5px 10px; border: 1px solid var(--phosphor-dim); background: var(--void);">ARTIFACTS</a>
-                <div>SECTOR: JUNK_ARCHIPELAGO</div>
-            </div>
+            <div>SECTOR: JUNK_ARCHIPELAGO</div>
         </footer>
 
     </div>
@@ -406,38 +403,52 @@
         const mainInterface = document.getElementById('main-interface');
         const contentLayers = document.querySelectorAll('.content-layer');
         const backBtn = document.getElementById('back-btn');
+        const nextBtn = document.getElementById('next-btn');
         const viewport = document.getElementById('viewport');
 
+        // Define the sequence of phases for the Next arrow
+        const phaseOrder = ['phase-intro', 'phase-1', 'phase-2', 'phase-4', 'phase-5', 'phase-6'];
+        let currentPhaseIndex = -1;
+
         function loadPhase(phaseId) {
-            // 1. Animate UI
             mainInterface.classList.add('active-content');
-            
-            // 2. Clear previous active layers
+
+            // Update Index
+            currentPhaseIndex = phaseOrder.indexOf(phaseId);
+
+            // Hide old layers
             contentLayers.forEach(layer => layer.classList.remove('active'));
 
-            // 3. Show new layer with slight delay for "loading" feel
             setTimeout(() => {
                 const selectedLayer = document.getElementById(phaseId);
                 if(selectedLayer) {
                     selectedLayer.classList.add('active');
-                    // Scroll to top of image
                     viewport.scrollTop = 0;
                 }
-            }, 400);
+            }, 300);
 
-            // 4. Enable Back Button
             backBtn.style.display = 'block';
+            nextBtn.style.display = 'block'; // Show next button
+        }
+
+        function nextPhase() {
+            // Calculate next index
+            let nextIndex = currentPhaseIndex + 1;
+
+            // Loop back to start if at end, or just stop? Let's loop.
+            if (nextIndex >= phaseOrder.length) {
+                nextIndex = 0;
+            }
+
+            loadPhase(phaseOrder[nextIndex]);
         }
 
         function resetSystem() {
-            // 1. Reset UI
             mainInterface.classList.remove('active-content');
-
-            // 2. Hide Content
             contentLayers.forEach(layer => layer.classList.remove('active'));
-
-            // 3. Hide Back Button
             backBtn.style.display = 'none';
+            nextBtn.style.display = 'none'; // Hide next button
+            currentPhaseIndex = -1;
         }
     </script>
 </body>
