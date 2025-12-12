@@ -3218,6 +3218,10 @@
         function animateJourney() {
             const time = Date.now() * 0.001;
 
+            // Collect label rects for collision detection (only for individual view)
+            const labelRects = [];
+            const doCollisionDetection = currentPerson && currentPerson !== 'all';
+
             journeyMarkers.forEach((marker, index) => {
                 // Pulse effect on rings
                 const pulsePhase = time + marker.ring.userData.pulseTime;
@@ -3228,8 +3232,62 @@
                 // Gentle bob on spheres
                 const bobOffset = Math.sin(time * 1.5 + index * 0.7) * 0.3;
                 marker.sphere.position.y = marker.point.y + bobOffset;
-                marker.label.position.y = marker.point.y + 3 + bobOffset;
+
+                // Set z-index based on distance to camera (closer = higher z-index)
+                const dist = camera.position.distanceTo(marker.sphere.position);
+                const zIndex = Math.round(10000 - dist * 10);
+                marker.label.element.style.zIndex = zIndex;
+
+                if (doCollisionDetection) {
+                    const rect = marker.label.element.getBoundingClientRect();
+                    labelRects.push({ marker, rect, dist });
+                } else {
+                    // Reset offset when viewing all
+                    marker.currentOffsetY = 0;
+                    marker.label.element.style.marginTop = '-12px';
+                }
             });
+
+            // Collision detection for individual journey view
+            if (doCollisionDetection && labelRects.length > 0) {
+                labelRects.sort((a, b) => a.dist - b.dist);
+
+                const padding = 8;
+                const targetOffsets = new Map();
+                const placedLabels = [];
+
+                labelRects.forEach(({ marker, rect }) => {
+                    const baseTop = rect.top + (marker.currentOffsetY || 0);
+                    const baseBottom = rect.bottom + (marker.currentOffsetY || 0);
+
+                    let targetOffsetY = 0;
+
+                    for (const placed of placedLabels) {
+                        const horizontalOverlap = !(rect.right < placed.left || rect.left > placed.right);
+                        const verticalOverlap = !(baseBottom - targetOffsetY < placed.top || baseTop - targetOffsetY > placed.bottom);
+
+                        if (horizontalOverlap && verticalOverlap) {
+                            targetOffsetY = Math.max(targetOffsetY, baseBottom - placed.top + padding);
+                        }
+                    }
+
+                    targetOffsets.set(marker, targetOffsetY);
+
+                    placedLabels.push({
+                        left: rect.left,
+                        right: rect.right,
+                        top: baseTop - targetOffsetY,
+                        bottom: baseBottom - targetOffsetY
+                    });
+                });
+
+                labelRects.forEach(({ marker }) => {
+                    if (marker.currentOffsetY === undefined) marker.currentOffsetY = 0;
+                    const target = targetOffsets.get(marker) || 0;
+                    marker.currentOffsetY += (target - marker.currentOffsetY) * 0.1;
+                    marker.label.element.style.marginTop = `${-12 - marker.currentOffsetY}px`;
+                });
+            }
 
             // Animate dashed lines
             journeyLines.forEach((lineObj) => {
