@@ -1277,6 +1277,14 @@
         let editMode = false;
         let editingPoint = null;
         let editedPersons = new Set(); // Track which persons have been edited this session
+
+        // Only allow one edited person at a time
+        function markPersonEdited(person) {
+            editedPersons.clear();
+            if (person) {
+                editedPersons.add(person);
+            }
+        }
         let draggingJourneyMarker = null;
         // Mobile detection
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -1597,7 +1605,7 @@
             setEditingPoint(newPoint);
             journeysVisible = true;
             selectedPersonName = targetPerson;
-            editedPersons.add(targetPerson); // Track that this person was edited
+            markPersonEdited(targetPerson);
             setJourneySelection(targetPerson);
         }
 
@@ -1627,7 +1635,7 @@
 
             renumberPersonJourneys(targetPerson);
             setJourneySelection(targetPerson);
-            editedPersons.add(targetPerson); // Track that this person was edited
+            markPersonEdited(targetPerson);
             lastJourneySaveTime = Date.now();
         }
 
@@ -1640,7 +1648,7 @@
                 list.splice(idx, 1);
             }
             renumberPersonJourneys(person);
-            editedPersons.add(person); // Track that this person was edited
+            markPersonEdited(person);
             const nextPoint = (allJourneys[person] || [])[0] || null;
             editingPoint = null;
             populateEditorFields(nextPoint);
